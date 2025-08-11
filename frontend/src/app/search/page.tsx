@@ -43,6 +43,7 @@ const SearchPage = () => {
   const [hasNextPage, setHasNextPage] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [nextApiStartPage, setNextApiStartPage] = useState(1); // Track which API page to start from next
 
   // Search throttling
   const [lastSearchTime, setLastSearchTime] = useState(0);
@@ -239,6 +240,16 @@ const SearchPage = () => {
         setHasNextPage(data.pagination.has_next_page);
         setTotalResults(data.pagination.total_results);
         setCurrentPage(data.pagination.current_page);
+        
+        // Update the next API start page if provided
+        if (data.pagination.next_api_start_page) {
+          setNextApiStartPage(data.pagination.next_api_start_page);
+        }
+        
+        // Reset to page 1 for new searches
+        if (resetResults) {
+          setNextApiStartPage(data.pagination.next_api_start_page || 5); // Default to 5 (after first 4 pages)
+        }
       } else if (hasSearchTerm) {
         // For search with term, use the advanced endpoint if filters are applied
         if (hasFilters) {
@@ -718,6 +729,9 @@ const SearchPage = () => {
                     queryParams.append('limit', '25');
                     queryParams.append('page', String(nextPage));
                     
+                    // IMPORTANT: Pass the api_start_page parameter for proper pagination
+                    queryParams.append('api_start_page', String(nextApiStartPage));
+                    
                     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
                     const response = await fetch(`${baseUrl}/anime/search/advanced?${queryParams}`);
                     
@@ -735,12 +749,26 @@ const SearchPage = () => {
                     
                     const data = await response.json();
                     console.log(`Fetched page ${nextPage} results: ${data.data.length} new results`);
+                    console.log(`Backend fetched API pages: ${data.pagination.api_pages_fetched}`);
                     
-                    // Append new results to existing ones
-                    setSearchResults(prevResults => [...prevResults, ...data.data]);
-                    setHasNextPage(data.pagination.has_next_page);
-                    setTotalResults(data.pagination.total_results);
-                    setCurrentPage(data.pagination.current_page);
+                    // Check if we got any new results
+                    if (data.data.length === 0) {
+                      // No new results found, but let user know and hide the Load More button
+                      setHasNextPage(false);
+                      setError('No more results found matching your criteria. Try adjusting your filters to discover more anime.');
+                      setTimeout(() => setError(null), 5000); // Clear the message after 5 seconds
+                    } else {
+                      // Append new results to existing ones
+                      setSearchResults(prevResults => [...prevResults, ...data.data]);
+                      setHasNextPage(data.pagination.has_next_page);
+                      setTotalResults(data.pagination.total_results);
+                      setCurrentPage(data.pagination.current_page);
+                      
+                      // Update the next API start page for subsequent requests
+                      if (data.pagination.next_api_start_page) {
+                        setNextApiStartPage(data.pagination.next_api_start_page);
+                      }
+                    }
                   } catch (err: any) {
                     console.error('Error fetching more results:', err);
                     setError(err.message || 'Failed to load more results. Please try again.');

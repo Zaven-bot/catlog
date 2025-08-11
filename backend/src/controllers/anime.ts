@@ -125,35 +125,44 @@ export const searchAnimeAdvanced = async (req: Request, res: Response) => {
       type,
       page = 1, 
       limit = 25,
-      batch_size = 100 // How many to fetch from API before filtering
+      api_start_page = 1 // New parameter to track which API page to start from
     } = req.query;
 
-    console.log('Advanced search params:', { query, genres, year_start, year_end, status, min_score, max_score, page });
+    console.log('Advanced search params:', { query, genres, year_start, year_end, status, min_score, max_score, page, api_start_page });
 
     // If we have genres but no search query, use a different approach
     if (genres && !query) {
       const genreArray = (genres as string).split(',');
-      console.log(`Genre-based search for: ${genreArray.join(', ')}, page: ${page}`);
+      console.log(`Genre-based search for: ${genreArray.join(', ')}, page: ${page}, starting from API page: ${api_start_page}`);
       
       const currentPage = parseInt(page as string);
       const resultsPerPage = parseInt(limit as string);
-      const batchSize = parseInt(batch_size as string);
+      const startApiPage = parseInt(api_start_page as string);
       
-      // Calculate how many API pages we need to fetch to get enough filtered results
-      // We'll fetch multiple pages until we have enough results or hit a reasonable limit
+      // Simple approach: fetch exactly 4 API pages starting from startApiPage
+      const pagesToFetch = 4;
+      const maxApiPage = startApiPage + pagesToFetch - 1;
+      
+      console.log(`Fetching API pages ${startApiPage}-${maxApiPage} (4 pages total)`);
+      
       let allFilteredResults: any[] = [];
-      let apiPage = 1;
-      const maxApiPages = Math.ceil(currentPage * resultsPerPage / 10) + 3; // Fetch extra pages to account for filtering
+      let hasMorePages = false;
       
-      while (allFilteredResults.length < currentPage * resultsPerPage && apiPage <= maxApiPages) {
-        console.log(`Fetching API page ${apiPage} to get more results...`);
+      // Fetch exactly 4 pages
+      for (let apiPage = startApiPage; apiPage <= maxApiPage; apiPage++) {
+        console.log(`Fetching API page ${apiPage}...`);
         
         try {
-          const topAnimeResults = await JikanService.getTopAnime(apiPage, 25); // Standard page size
+          const topAnimeResults = await JikanService.getTopAnime(apiPage, 25);
           
           if (!topAnimeResults.data || topAnimeResults.data.length === 0) {
-            console.log(`No more results from API page ${apiPage}, stopping`);
+            console.log(`No results from API page ${apiPage}, stopping here`);
             break;
+          }
+          
+          // Check if there are more pages after this batch
+          if (apiPage === maxApiPage && topAnimeResults.pagination.has_next_page) {
+            hasMorePages = true;
           }
           
           let transformedAnime = topAnimeResults.data.map(anime => 
@@ -211,12 +220,13 @@ export const searchAnimeAdvanced = async (req: Request, res: Response) => {
 
           // Add filtered results from this batch
           allFilteredResults = allFilteredResults.concat(filteredBatch);
-          console.log(`API page ${apiPage}: Got ${filteredBatch.length} filtered results. Total so far: ${allFilteredResults.length}`);
           
-          apiPage++;
+          const filterRatio = filteredBatch.length / transformedAnime.length;
+          console.log(`API page ${apiPage}: Got ${filteredBatch.length}/${transformedAnime.length} results (${(filterRatio * 100).toFixed(1)}% pass rate). Total: ${allFilteredResults.length}`);
+          
         } catch (error) {
           console.error(`Error fetching API page ${apiPage}:`, error);
-          break;
+          // Continue to next page if one fails
         }
       }
 
@@ -225,21 +235,38 @@ export const searchAnimeAdvanced = async (req: Request, res: Response) => {
         index === self.findIndex(a => a.malId === anime.malId)
       );
 
-      // Paginate the final filtered results
-      const startIndex = (currentPage - 1) * resultsPerPage;
-      const paginatedResults = uniqueResults.slice(startIndex, startIndex + resultsPerPage);
-      const hasNextPage = uniqueResults.length > startIndex + resultsPerPage;
+      // For the first request (page 1), return the first 25 results
+      // For subsequent requests, return all results from this batch
+      let paginatedResults;
+      let nextApiStartPage;
       
-      console.log(`Final results: ${uniqueResults.length} total, returning ${paginatedResults.length} for page ${currentPage}`);
+      if (currentPage === 1) {
+        // First page: return first 25 results
+        paginatedResults = uniqueResults.slice(0, resultsPerPage);
+        nextApiStartPage = startApiPage + pagesToFetch;
+      } else {
+        // Subsequent pages: return all results from this batch
+        paginatedResults = uniqueResults;
+        nextApiStartPage = startApiPage + pagesToFetch;
+      }
+      
+      console.log(`\n=== SIMPLE PAGINATION SUMMARY ===`);
+      console.log(`Fetched API pages: ${startApiPage}-${maxApiPage}`);
+      console.log(`Total filtered results from this batch: ${uniqueResults.length}`);
+      console.log(`Returning: ${paginatedResults.length} results`);
+      console.log(`Has more API pages: ${hasMorePages}`);
+      console.log(`Next API start page: ${nextApiStartPage}`);
+      console.log(`=================================\n`);
 
       res.json({
         data: paginatedResults,
         pagination: {
           current_page: currentPage,
-          has_next_page: hasNextPage,
-          total_results: uniqueResults.length,
-          last_visible_page: Math.ceil(uniqueResults.length / resultsPerPage),
-          api_pages_fetched: apiPage - 1
+          has_next_page: hasMorePages || paginatedResults.length >= resultsPerPage,
+          total_results: null, // We don't know the total, and that's OK
+          api_pages_fetched: `${startApiPage}-${maxApiPage}`,
+          next_api_start_page: nextApiStartPage,
+          results_in_batch: uniqueResults.length
         },
         filters: {
           genres: genres ? (genres as string).split(',') : [],
@@ -251,7 +278,7 @@ export const searchAnimeAdvanced = async (req: Request, res: Response) => {
         }
       });
     } else {
-      // Regular search with query - use the fixed search function
+      // Regular search with query - use the existing search function
       const searchResults = await JikanService.searchAnime(
         query as string,
         parseInt(page as string),

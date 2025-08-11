@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const JIKAN_BASE_URL = 'https://api.jikan.moe/v4';
 
-// Enhanced rate limiting - Jikan allows 3 requests per second
+// Enhanced rate limiting - Jikan allows 3 requests per second, but we'll be more conservative
 class RequestQueue {
   private queue: Array<() => Promise<any>> = [];
   private isProcessing = false;
@@ -31,7 +31,8 @@ class RequestQueue {
     } catch (error: any) {
       // If rate limited and we have attempts left, wait and retry
       if (error.response?.status === 429 && attempt <= 3) {
-        const backoffTime = Math.min(1000 * Math.pow(2, attempt), 30000); // Exponential backoff, max 30 seconds
+        // Much longer exponential backoff for rate limiting
+        const backoffTime = Math.min(30000 * Math.pow(2, attempt - 1), 120000); // 30s, 60s, 120s
         console.log(`Rate limited, waiting ${backoffTime}ms before retry ${attempt}/3`);
         await this.delay(backoffTime);
         return this.executeWithRetry(requestFn, attempt + 1);
@@ -70,19 +71,19 @@ class RequestQueue {
       this.windowStart = now;
     }
     
-    // If we've made 3 requests in the current window, wait
-    if (this.requestCount >= 3) {
+    // Very conservative - only 1 request per second to avoid rate limits
+    if (this.requestCount >= 1) {
       const waitTime = 1000 - (now - this.windowStart);
       if (waitTime > 0) {
-        await this.delay(waitTime);
+        await this.delay(waitTime + 500); // Add extra 500ms buffer
         this.requestCount = 0;
         this.windowStart = Date.now();
       }
     }
     
-    // Ensure minimum 350ms between requests
+    // Ensure minimum 1 second between requests
     const timeSinceLastRequest = now - this.lastRequestTime;
-    const minInterval = 350;
+    const minInterval = 1000;
     
     if (timeSinceLastRequest < minInterval) {
       await this.delay(minInterval - timeSinceLastRequest);
@@ -177,8 +178,27 @@ export class JikanService {
         });
         
         return response.data;
-      } catch (error) {
+      } catch (error: any) {
         console.error('Jikan top anime error:', error);
+        
+        // Handle specific error cases more gracefully
+        if (error.response?.status === 400) {
+          // This often means we've requested a page that doesn't exist
+          console.log(`Page ${page} not available, likely reached end of results`);
+          return {
+            data: [],
+            pagination: {
+              current_page: page,
+              has_next_page: false,
+              last_visible_page: page - 1
+            }
+          };
+        }
+        
+        if (error.response?.status === 429) {
+          throw new Error('Rate limited by Jikan API. Please wait a moment and try again.');
+        }
+        
         throw new Error('Failed to fetch top anime');
       }
     });
