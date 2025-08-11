@@ -245,24 +245,148 @@ export const getUserAnimeStats = async (req: Request, res: Response) => {
       prisma.userAnime.count({ where: { userId, status: 'ON_HOLD' } })
     ]);
 
-    // Calculate total episodes watched
-    const completedAnimeWithEpisodes = await prisma.userAnime.findMany({
-      where: { userId, status: 'COMPLETED' },
+    // Get all user anime with anime details for advanced analytics
+    const userAnimeList = await prisma.userAnime.findMany({
+      where: { userId },
       include: { anime: true }
     });
 
-    const totalEpisodesWatched = completedAnimeWithEpisodes.reduce((total: number, entry) => {
-      return total + (entry.anime.episodes || 0);
+    // Calculate total episodes watched (including episodesWatched field for currently watching)
+    const totalEpisodesWatched = userAnimeList.reduce((total: number, entry) => {
+      if (entry.status === 'COMPLETED') {
+        return total + (entry.anime.episodes || 0);
+      } else if (entry.status === 'WATCHING' && entry.episodesWatched) {
+        return total + entry.episodesWatched;
+      }
+      return total;
     }, 0);
 
+    // Calculate estimated watch time (assuming 24 minutes per episode)
+    const totalWatchTimeMinutes = totalEpisodesWatched * 24;
+    const totalWatchTimeHours = Math.round(totalWatchTimeMinutes / 60);
+    const totalWatchTimeDays = Math.round(totalWatchTimeHours / 24 * 10) / 10; // 1 decimal place
+
+    // Genre analysis
+    const genreMap = new Map<string, number>();
+    userAnimeList.forEach(entry => {
+      entry.anime.genres.forEach(genre => {
+        genreMap.set(genre, (genreMap.get(genre) || 0) + 1);
+      });
+    });
+    
+    const topGenres = Array.from(genreMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([genre, count]) => ({ genre, count }));
+
+    // Rating distribution analysis
+    const ratingDistribution = {
+      excellent: userAnimeList.filter(entry => entry.personalRating && entry.personalRating >= 9).length,
+      great: userAnimeList.filter(entry => entry.personalRating && entry.personalRating >= 7 && entry.personalRating < 9).length,
+      good: userAnimeList.filter(entry => entry.personalRating && entry.personalRating >= 5 && entry.personalRating < 7).length,
+      poor: userAnimeList.filter(entry => entry.personalRating && entry.personalRating < 5).length,
+      unrated: userAnimeList.filter(entry => !entry.personalRating).length
+    };
+
+    // Year analysis (when anime was released)
+    const yearMap = new Map<number, number>();
+    userAnimeList.forEach(entry => {
+      if (entry.anime.year) {
+        yearMap.set(entry.anime.year, (yearMap.get(entry.anime.year) || 0) + 1);
+      }
+    });
+    
+    const yearDistribution = Array.from(yearMap.entries())
+      .sort((a, b) => b[0] - a[0]) // Sort by year descending
+      .slice(0, 10) // Top 10 years
+      .map(([year, count]) => ({ year, count }));
+
+    // Score analysis (MAL scores)
+    const averageScore = userAnimeList.length > 0 
+      ? userAnimeList.reduce((sum, entry) => sum + (entry.anime.score || 0), 0) / userAnimeList.length
+      : 0;
+
+    const personalAverageRating = userAnimeList.filter(entry => entry.personalRating).length > 0
+      ? userAnimeList
+          .filter(entry => entry.personalRating)
+          .reduce((sum, entry) => sum + (entry.personalRating || 0), 0) / 
+        userAnimeList.filter(entry => entry.personalRating).length
+      : 0;
+
+    // Monthly activity (last 12 months)
+    const now = new Date();
+    const monthlyActivity = [];
+    for (let i = 11; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const nextMonthDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      
+      const monthlyCount = userAnimeList.filter(entry => {
+        const entryDate = new Date(entry.updatedAt);
+        return entryDate >= monthDate && entryDate < nextMonthDate;
+      }).length;
+
+      monthlyActivity.push({
+        month: monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        count: monthlyCount
+      });
+    }
+
+    // Favorite studios (top 5)
+    const studioMap = new Map<string, number>();
+    userAnimeList.forEach(entry => {
+      entry.anime.studios.forEach(studio => {
+        studioMap.set(studio, (studioMap.get(studio) || 0) + 1);
+      });
+    });
+    
+    const topStudios = Array.from(studioMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([studio, count]) => ({ studio, count }));
+
+    // Completion rate
+    const completionRate = totalAnime > 0 ? Math.round((completedAnime / totalAnime) * 100) : 0;
+
+    // Drop rate
+    const dropRate = totalAnime > 0 ? Math.round((droppedAnime / totalAnime) * 100) : 0;
+
     res.json({
+      // Basic counts
       totalAnime,
       completedAnime,
       watchingAnime,
       plannedAnime,
       droppedAnime,
       onHoldAnime,
-      totalEpisodesWatched
+      
+      // Episode and time stats
+      totalEpisodesWatched,
+      totalWatchTimeMinutes,
+      totalWatchTimeHours,
+      totalWatchTimeDays,
+      
+      // Genre analysis
+      topGenres,
+      
+      // Rating analysis
+      ratingDistribution,
+      personalAverageRating: Math.round(personalAverageRating * 10) / 10,
+      
+      // Score analysis
+      averageScore: Math.round(averageScore * 10) / 10,
+      
+      // Year distribution
+      yearDistribution,
+      
+      // Activity tracking
+      monthlyActivity,
+      
+      // Studio preferences
+      topStudios,
+      
+      // Completion metrics
+      completionRate,
+      dropRate
     });
   } catch (error) {
     console.error('Get user anime stats error:', error);

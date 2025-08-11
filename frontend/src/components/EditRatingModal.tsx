@@ -1,0 +1,53 @@
+import React, { useState } from 'react';
+
+interface EditRatingModalProps {
+    anime: any;
+    onClose: () => void;
+    onSave: (animeId: number, data: { rating: number; notes: string }) => void;
+}
+
+const EditRatingModal: React.FC<EditRatingModalProps> = ({ anime, onClose, onSave }) => {
+    const [rating, setRating] = useState(anime.personalRating || '');
+    const [notes, setNotes] = useState(anime.notes || '');
+
+    const handleSave = () => {
+        onSave(anime.id, { rating: parseFloat(rating), notes });
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+                <h2 className="text-xl font-semibold mb-4">Edit Rating & Notes</h2>
+                <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1">Rating (1-10)</label>
+                    <input
+                        type="number"
+                        value={rating}
+                        onChange={(e) => setRating(e.target.value)}
+                        className="w-full p-2 border rounded"
+                        min="1"
+                        max="10"
+                    />
+                </div>
+                <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1">Notes</label>
+                    <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="w-full p-2 border rounded"
+                    />
+                </div>
+                <div className="flex justify-end space-x-2">
+                    <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">
+                        Cancel
+                    </button>
+                    <button onClick={handleSave} className="px-4 py-2 bg-blue-500 text-white rounded">
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default EditRatingModal;

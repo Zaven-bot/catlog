@@ -6,6 +6,7 @@ import { useCat } from '../hooks/useCat';
 import { useUserAnimeList} from '../hooks/useUserAnimeList';
 import { useAuth } from '../hooks/useAuth';
 import { AnimeStatus } from '../../../shared/types';
+import EditRatingModal from './EditRatingModal';
 
 interface Anime {
   id: number;
@@ -31,6 +32,7 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
   const { user } = useAuth();
   const { addAnimeToList, removeAnimeFromList, isAnimeInList, getAnimeStatus, updateAnimeInList, loading } = useUserAnimeList();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Get fresh values on each render to ensure they reflect the current state
   const userAnimeEntry = isAnimeInList(anime.malId);
@@ -119,6 +121,10 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
     }
   };
 
+  const handleRateAndReview = () => {
+    setIsModalOpen(true);
+  };
+
   const getStatusButtonText = (status: AnimeStatus) => {
     if (isProcessing) return 'Loading...';
     
@@ -145,8 +151,7 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
           return isCurrentStatus ? '✓ Watching' : '+ Watching';
         case 'COMPLETED': 
           return isCurrentStatus ? '✓ Completed' : 'Mark Complete';
-        default: 
-          return isCurrentStatus ? `✓ ${status}` : `+ ${status}`;
+        default: return isCurrentStatus ? `✓ ${status}` : `+ ${status}`;
       }
     }
   };
@@ -206,6 +211,13 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
                 >
                   {getStatusButtonText(AnimeStatus.WATCHING)}
                 </button>
+                <button
+                  onClick={(e) => handleToggleList(e, AnimeStatus.DROPPED)}
+                  disabled={isProcessing || loading}
+                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {getStatusButtonText(AnimeStatus.DROPPED)}
+                </button>
               </div>
             </div>
           )}
@@ -253,13 +265,21 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
       {/* Quick action buttons at bottom */}
       <div className="mt-3 flex gap-2">
         {user ? (
-          <button
-            onClick={(e) => handleToggleList(e, AnimeStatus.COMPLETED)}
-            disabled={isProcessing || loading}
-            className={`flex-1 ${getStatusButtonColor(AnimeStatus.COMPLETED)} px-3 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-50`}
-          >
-            {getStatusButtonText(AnimeStatus.COMPLETED)}
-          </button>
+          <>
+            <button
+              onClick={(e) => handleToggleList(e, AnimeStatus.COMPLETED)}
+              disabled={isProcessing || loading}
+              className={`flex-1 ${getStatusButtonColor(AnimeStatus.COMPLETED)} px-3 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-50`}
+            >
+              {getStatusButtonText(AnimeStatus.COMPLETED)}
+            </button>
+            <button
+              onClick={handleRateAndReview}
+              className="flex-1 btn-secondary text-xs"
+            >
+              Rate & Review
+            </button>
+          </>
         ) : (
           <button
             onClick={(e) => { e.stopPropagation(); router.push('/login'); }}
@@ -275,6 +295,31 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
         >
           View Details
         </button>
+      </div>
+
+      {isModalOpen && (
+        <EditRatingModal
+          anime={anime}
+          onClose={() => setIsModalOpen(false)}
+          onSave={(animeId, data) => {
+            // Handle save logic here
+            setIsModalOpen(false);
+          }}
+        />
+      )}
+
+      {/* Your Ratings section - always visible */}
+      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+        <h4 className="text-md font-semibold text-gray-800 mb-2">Your Ratings</h4>
+        
+        <div className="flex items-center gap-4">
+          <img src={anime.imageUrl} alt={anime.title} className="w-16 h-16 object-cover rounded" />
+          <div>
+            <h3 className="text-lg font-bold">{anime.title}</h3>
+            <p className="text-gray-600 text-sm">Rating: {anime.personalRating || 'N/A'}/10</p>
+            <p className="text-gray-600 text-sm">Notes: {anime.notes || 'No notes added'}</p>
+          </div>
+        </div>
       </div>
     </div>
   );
