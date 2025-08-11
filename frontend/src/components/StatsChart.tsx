@@ -15,6 +15,7 @@ import {
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import { useUserAnimeList } from '../hooks/useUserAnimeList';
+import { UserAnime, AnimeStatus } from '../../../shared/types';
 
 // Register Chart.js components
 ChartJS.register(
@@ -52,7 +53,7 @@ const StatsChart: React.FC = () => {
         if (userAnimeList.length > 0) {
             loadStats();
         }
-    }, [userAnimeList, getUserAnimeStats]);
+    }, [userAnimeList]);
 
     if (!stats || userAnimeList.length === 0) {
         return (
@@ -136,11 +137,11 @@ const StatsChart: React.FC = () => {
         datasets: [
             {
                 data: [
-                    userAnimeList.filter((anime) => anime.personalRating >= 9).length,
-                    userAnimeList.filter((anime) => anime.personalRating >= 7 && anime.personalRating < 9).length,
-                    userAnimeList.filter((anime) => anime.personalRating >= 5 && anime.personalRating < 7).length,
-                    userAnimeList.filter((anime) => anime.personalRating > 0 && anime.personalRating < 5).length,
-                    userAnimeList.filter((anime) => !anime.personalRating).length,
+                    userAnimeList.filter((entry: UserAnime) => entry.personalRating !== undefined && entry.personalRating >= 9).length,
+                    userAnimeList.filter((entry: UserAnime) => entry.personalRating !== undefined && entry.personalRating >= 7 && entry.personalRating < 9).length,
+                    userAnimeList.filter((entry: UserAnime) => entry.personalRating !== undefined && entry.personalRating >= 5 && entry.personalRating < 7).length,
+                    userAnimeList.filter((entry: UserAnime) => entry.personalRating !== undefined && entry.personalRating > 0 && entry.personalRating < 5).length,
+                    userAnimeList.filter((entry: UserAnime) => entry.personalRating === undefined).length,
                 ],
                 backgroundColor: [
                     'rgba(34, 197, 94, 0.8)',    // Green for excellent

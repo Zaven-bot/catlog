@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useCat } from '../hooks/useCat';
 import { useUserAnimeList} from '../hooks/useUserAnimeList';
 import { useAuth } from '../hooks/useAuth';
-import { AnimeStatus } from '../../../shared/types';
+import { AnimeStatus, UserAnime } from '../../../shared/types';
 import EditRatingModal from './EditRatingModal';
 
 interface Anime {
@@ -123,6 +123,22 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
 
   const handleRateAndReview = () => {
     setIsModalOpen(true);
+  };
+
+  const handleSaveRating = async (personalRating: number, notes: string) => {
+    if (!userAnimeEntry) return;
+    
+    try {
+      const success = await updateAnimeInList(userAnimeEntry.id, { 
+        personalRating, 
+        notes 
+      });
+      if (success) {
+        console.log(`Updated rating and notes for "${anime.title}"`);
+      }
+    } catch (error) {
+      console.error('Failed to save rating:', error);
+    }
   };
 
   const getStatusButtonText = (status: AnimeStatus) => {
@@ -300,27 +316,33 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
       {isModalOpen && (
         <EditRatingModal
           anime={anime}
+          userAnime={userAnimeEntry}
           onClose={() => setIsModalOpen(false)}
-          onSave={(animeId, data) => {
-            // Handle save logic here
-            setIsModalOpen(false);
-          }}
+          onSave={handleSaveRating}
         />
       )}
 
-      {/* Your Ratings section - always visible */}
-      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-        <h4 className="text-md font-semibold text-gray-800 mb-2">Your Ratings</h4>
-        
-        <div className="flex items-center gap-4">
-          <img src={anime.imageUrl} alt={anime.title} className="w-16 h-16 object-cover rounded" />
-          <div>
-            <h3 className="text-lg font-bold">{anime.title}</h3>
-            <p className="text-gray-600 text-sm">Rating: {anime.personalRating || 'N/A'}/10</p>
-            <p className="text-gray-600 text-sm">Notes: {anime.notes || 'No notes added'}</p>
+      {/* Show ratings and notes if anime is in list */}
+      {isInList && userAnimeEntry && (
+        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-3">
+            <img 
+              src={anime.imageUrl || 'https://via.placeholder.com/50x70'} 
+              alt={anime.title} 
+              className="w-12 h-16 object-cover rounded" 
+            />
+            <div className="flex-1">
+              <h4 className="font-semibold text-sm">{anime.title}</h4>
+              <p className="text-xs text-gray-600">
+                Rating: {userAnimeEntry.personalRating ? `${userAnimeEntry.personalRating}/10` : 'Not rated'}
+              </p>
+              <p className="text-xs text-gray-600">
+                Notes: {userAnimeEntry.notes || 'No notes'}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

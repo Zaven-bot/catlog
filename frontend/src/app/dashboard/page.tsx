@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import StatsChart from '../../components/StatsChart';
 import VirtualCat from '../../components/VirtualCat';
 import EditRatingModal from '../../components/EditRatingModal';
-import { UserAnime } from '../../types';
+import { UserAnime } from '../../../../shared/types';
 
 const DashboardPage = () => {
     const { user, loading: authLoading } = useAuth();
@@ -42,8 +42,13 @@ const DashboardPage = () => {
         setIsModalOpen(true);
     };
 
-    const handleSaveRating = async (animeId: number, data: { rating: number; notes: string }) => {
-        await updateAnimeInList(animeId, data);
+    const handleSaveRating = async (rating: number, notes: string) => {
+        if (!selectedAnime) return;
+        
+        await updateAnimeInList(selectedAnime.id, { 
+            personalRating: rating, 
+            notes 
+        });
         setIsModalOpen(false);
     };
 
@@ -91,23 +96,6 @@ const DashboardPage = () => {
             {/* Stats and Charts */}
             <StatsChart />
 
-            {/* Watch Time Summary */}
-            <h3 className="text-lg font-semibold mb-4">⏱️ Watch Time Summary</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{stats?.totalWatchTimeMinutes || 0}m</div>
-                    <div className="text-gray-600 text-sm">Total Minutes</div>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{stats?.totalWatchTimeHours || 0}h</div>
-                    <div className="text-gray-600 text-sm">Total Hours</div>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600">{stats?.totalWatchTimeDays || 0}d</div>
-                    <div className="text-gray-600 text-sm">Total Days</div>
-                </div>
-            </div>
-
             {/* Ratings Section */}
             <div className="mt-12">
                 <h2 className="text-xl font-semibold mb-6">⭐ Your Ratings</h2>
@@ -130,7 +118,8 @@ const DashboardPage = () => {
 
             {isModalOpen && (
                 <EditRatingModal
-                    anime={selectedAnime}
+                    anime={selectedAnime?.anime}
+                    userAnime={selectedAnime}
                     onClose={() => setIsModalOpen(false)}
                     onSave={handleSaveRating}
                 />

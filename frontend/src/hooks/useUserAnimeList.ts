@@ -2,30 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
-import { AnimeStatus } from '../../../shared/types';
-
-interface UserAnime {
-  id: number;
-  status: AnimeStatus;
-  personalRating?: number;
-  notes?: string;
-  episodesWatched?: number;
-  isFavorite: boolean;
-  startDate?: string;
-  completedDate?: string;
-  anime: {
-    id: number;
-    malId: number;
-    title: string;
-    description?: string;
-    imageUrl?: string;
-    genres: string[];
-    episodes?: number;
-    status: string;
-    score?: number;
-    year?: number;
-  };
-}
+import { AnimeStatus, UserAnime } from '../../../shared/types';
 
 interface UseUserAnimeListReturn {
   userAnimeList: UserAnime[];

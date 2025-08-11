@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
+import { UserAnime } from '../../../shared/types';
 
 interface EditRatingModalProps {
     anime: any;
+    userAnime: UserAnime | null;
     onClose: () => void;
-    onSave: (animeId: number, data: { rating: number; notes: string }) => void;
+    onSave: (rating: number, notes: string) => void;
 }
 
-const EditRatingModal: React.FC<EditRatingModalProps> = ({ anime, onClose, onSave }) => {
-    const [rating, setRating] = useState(anime.personalRating || '');
-    const [notes, setNotes] = useState(anime.notes || '');
+const EditRatingModal: React.FC<EditRatingModalProps> = ({ anime, userAnime, onClose, onSave }) => {
+    const [rating, setRating] = useState(userAnime?.personalRating?.toString() || '');
+    const [notes, setNotes] = useState(userAnime?.notes || '');
 
     const handleSave = () => {
-        onSave(anime.id, { rating: parseFloat(rating), notes });
+        onSave(parseFloat(rating) || 0, notes);
+        onClose();
     };
 
     return (
