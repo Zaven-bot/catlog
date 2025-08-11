@@ -141,6 +141,23 @@ const SearchPage = () => {
     setCooldownTimer(Math.ceil(SEARCH_COOLDOWN / 1000));
   };
 
+  // Store the last search parameters to use for load more
+  const [lastSearchParams, setLastSearchParams] = useState<{
+    searchTerm: string;
+    filters: AdvancedFilters;
+  }>({
+    searchTerm: '',
+    filters: {
+      genres: [],
+      yearStart: '',
+      yearEnd: '',
+      statuses: [],
+      minScore: '',
+      maxScore: '',
+      types: []
+    }
+  });
+
   const performSearch = async (resetResults = true) => {
     // Check if we're in cooldown
     if (!canSearch()) {
@@ -194,6 +211,11 @@ const SearchPage = () => {
         queryParams.append('limit', '25');
         queryParams.append('page', resetResults ? '1' : String(currentPage));
         
+        // Store search parameters for load more
+        if (resetResults) {
+          setLastSearchParams({ searchTerm, filters });
+        }
+        
         // Fix URL construction to avoid double /api/ path
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
         const response = await fetch(`${baseUrl}/anime/search/advanced?${queryParams}`);
@@ -218,20 +240,71 @@ const SearchPage = () => {
         setTotalResults(data.pagination.total_results);
         setCurrentPage(data.pagination.current_page);
       } else if (hasSearchTerm) {
-        // If we have a search term, use regular search and apply filters
-        const results = await searchAnime(searchTerm.trim());
-        addToRecentSearches(searchTerm.trim());
-        
-        console.log(`Search for "${searchTerm}" returned ${results.length} results`);
-        
-        // Apply frontend filters to search results if any filters are selected
-        const filteredResults = hasFilters ? applyAdvancedFilters(results) : results;
-        console.log(`After filtering: ${filteredResults.length} results`);
-        
-        setSearchResults(filteredResults);
-        setHasNextPage(false); // Frontend filtering doesn't support pagination
-        setTotalResults(filteredResults.length);
-        setCurrentPage(1);
+        // For search with term, use the advanced endpoint if filters are applied
+        if (hasFilters) {
+          console.log('Using advanced search endpoint with search term and filters...');
+          
+          const queryParams = new URLSearchParams();
+          queryParams.append('q', searchTerm.trim());
+          
+          if (filters.genres.length > 0) {
+            queryParams.append('genres', filters.genres.join(','));
+          }
+          if (filters.yearStart) {
+            queryParams.append('year_start', filters.yearStart);
+          }
+          if (filters.yearEnd) {
+            queryParams.append('year_end', filters.yearEnd);
+          }
+          if (filters.statuses.length > 0) {
+            queryParams.append('status', filters.statuses.join(','));
+          }
+          if (filters.minScore) {
+            queryParams.append('min_score', filters.minScore);
+          }
+          if (filters.maxScore) {
+            queryParams.append('max_score', filters.maxScore);
+          }
+          queryParams.append('limit', '25');
+          queryParams.append('page', resetResults ? '1' : String(currentPage));
+          
+          // Store search parameters for load more
+          if (resetResults) {
+            setLastSearchParams({ searchTerm, filters });
+          }
+          
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+          const response = await fetch(`${baseUrl}/anime/search/advanced?${queryParams}`);
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Search failed');
+          }
+          
+          const data = await response.json();
+          console.log(`Search with filters returned ${data.data.length} results, has next page: ${data.pagination.has_next_page}`);
+          
+          setSearchResults(resetResults ? data.data : [...searchResults, ...data.data]);
+          setHasNextPage(data.pagination.has_next_page);
+          setTotalResults(data.pagination.total_results);
+          setCurrentPage(data.pagination.current_page);
+        } else {
+          // If we have a search term but no filters, use regular search
+          const results = await searchAnime(searchTerm.trim());
+          addToRecentSearches(searchTerm.trim());
+          
+          console.log(`Search for "${searchTerm}" returned ${results.length} results`);
+          
+          // Store search parameters for load more (though regular search doesn't support pagination)
+          if (resetResults) {
+            setLastSearchParams({ searchTerm, filters });
+          }
+          
+          setSearchResults(results);
+          setHasNextPage(false); // Regular search doesn't support pagination
+          setTotalResults(results.length);
+          setCurrentPage(1);
+        }
       }
     } catch (err: any) {
       console.error('Search error:', err);
@@ -612,34 +685,41 @@ const SearchPage = () => {
                 onClick={async () => {
                   setIsLoadingMore(true);
                   const nextPage = currentPage + 1;
-                  setCurrentPage(nextPage);
                   
-                  // Fetch more results
                   try {
                     const queryParams = new URLSearchParams();
                     
-                    if (filters.genres.length > 0) {
-                      queryParams.append('genres', filters.genres.join(','));
+                    // Include search term if it was part of the original search
+                    if (lastSearchParams.searchTerm.trim()) {
+                      queryParams.append('q', lastSearchParams.searchTerm.trim());
                     }
-                    if (filters.yearStart) {
-                      queryParams.append('year_start', filters.yearStart);
+                    
+                    // Include all filters from the last search
+                    if (lastSearchParams.filters.genres.length > 0) {
+                      queryParams.append('genres', lastSearchParams.filters.genres.join(','));
                     }
-                    if (filters.yearEnd) {
-                      queryParams.append('year_end', filters.yearEnd);
+                    if (lastSearchParams.filters.yearStart) {
+                      queryParams.append('year_start', lastSearchParams.filters.yearStart);
                     }
-                    if (filters.statuses.length > 0) {
-                      queryParams.append('status', filters.statuses.join(','));
+                    if (lastSearchParams.filters.yearEnd) {
+                      queryParams.append('year_end', lastSearchParams.filters.yearEnd);
                     }
-                    if (filters.minScore) {
-                      queryParams.append('min_score', filters.minScore);
+                    if (lastSearchParams.filters.statuses.length > 0) {
+                      queryParams.append('status', lastSearchParams.filters.statuses.join(','));
                     }
-                    if (filters.maxScore) {
-                      queryParams.append('max_score', filters.maxScore);
+                    if (lastSearchParams.filters.minScore) {
+                      queryParams.append('min_score', lastSearchParams.filters.minScore);
                     }
-                    queryParams.append('limit', '50');
+                    if (lastSearchParams.filters.maxScore) {
+                      queryParams.append('max_score', lastSearchParams.filters.maxScore);
+                    }
+                    
+                    // Use consistent limit and page parameters
+                    queryParams.append('limit', '25');
                     queryParams.append('page', String(nextPage));
                     
-                    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/anime/search/advanced?${queryParams}`);
+                    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+                    const response = await fetch(`${baseUrl}/anime/search/advanced?${queryParams}`);
                     
                     if (!response.ok) {
                       const errorData = await response.json().catch(() => ({}));
@@ -649,16 +729,18 @@ const SearchPage = () => {
                       } else if (response.status === 400) {
                         throw new Error(errorData.error || 'Invalid search parameters. Please adjust your filters.');
                       } else {
-                        throw new Error(errorData.error || 'Advanced search failed');
+                        throw new Error(errorData.error || 'Failed to load more results');
                       }
                     }
                     
                     const data = await response.json();
                     console.log(`Fetched page ${nextPage} results: ${data.data.length} new results`);
                     
+                    // Append new results to existing ones
                     setSearchResults(prevResults => [...prevResults, ...data.data]);
-                    setHasNextPage(data.hasNextPage);
-                    setTotalResults(data.totalResults);
+                    setHasNextPage(data.pagination.has_next_page);
+                    setTotalResults(data.pagination.total_results);
+                    setCurrentPage(data.pagination.current_page);
                   } catch (err: any) {
                     console.error('Error fetching more results:', err);
                     setError(err.message || 'Failed to load more results. Please try again.');
@@ -666,9 +748,21 @@ const SearchPage = () => {
                     setIsLoadingMore(false);
                   }
                 }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all duration-200"
+                disabled={isLoadingMore}
+                className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                  isLoadingMore
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
               >
-                {isLoadingMore ? 'Loading more...' : 'Load More'}
+                {isLoadingMore ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Loading more...
+                  </div>
+                ) : (
+                  'Load More'
+                )}
               </button>
             </div>
           )}
