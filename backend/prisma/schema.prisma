@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int         @id @default(autoincrement())
+  username  String      @unique
+  password  String
+  email     String      @unique
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  animeList UserAnime[]
+}
+
+model UserAnime {
+  id              Int         @id @default(autoincrement())
+  userId          Int
+  animeId         Int
+  status          AnimeStatus @default(PLAN_TO_WATCH)
+  personalRating  Int?        @db.SmallInt
+  notes           String?
+  episodesWatched Int?        @default(0)
+  startDate       DateTime?
+  completedDate   DateTime?
+  isFavorite      Boolean     @default(false)
+  tags            String[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  anime           Anime       @relation(fields: [animeId], references: [id])
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, animeId])
+}
+
+model Anime {
+  id           Int         @id @default(autoincrement())
+  malId        Int         @unique
+  title        String
+  titleEnglish String?
+  description  String?
+  imageUrl     String?
+  genres       String[]
+  episodes     Int?
+  status       String
+  score        Float?
+  year         Int?
+  rating       String?
+  studios      String[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  userAnime    UserAnime[]
+}
+
+enum AnimeStatus {
+  WATCHING
+  COMPLETED
+  ON_HOLD
+  DROPPED
+  PLAN_TO_WATCH
+}
