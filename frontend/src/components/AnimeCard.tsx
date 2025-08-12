@@ -40,6 +40,42 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
   const currentStatus = getAnimeStatus(anime.malId);
   const isOnMyListPage = pathname === '/my-list';
 
+  // Helper function to get consistent status display
+  const getStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'PLAN_TO_WATCH':
+        return 'Planned';
+      case 'WATCHING':
+        return 'Watching';
+      case 'COMPLETED':
+        return 'Completed';
+      case 'ON_HOLD':
+        return 'On Hold';
+      case 'DROPPED':
+        return 'Dropped';
+      default:
+        return status;
+    }
+  };
+
+  // Helper function to get status badge color
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'COMPLETED':
+        return 'bg-green-500';
+      case 'WATCHING':
+        return 'bg-blue-500';
+      case 'ON_HOLD':
+        return 'bg-yellow-500';
+      case 'DROPPED':
+        return 'bg-red-500';
+      case 'PLAN_TO_WATCH':
+        return 'bg-gray-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
   const handleClick = () => {
     logActivity('view');
     router.push(`/anime/${anime.malId}`);
@@ -145,19 +181,11 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
     if (isProcessing) return 'Loading...';
     
     const isCurrentStatus = isInList && currentStatus === status;
+    const statusDisplay = getStatusDisplay(status);
     
     if (isOnMyListPage) {
       // Special text for my-list page
-      switch (status) {
-        case 'PLAN_TO_WATCH': 
-          return isCurrentStatus ? '✓ Planned' : 'Planned';
-        case 'WATCHING': 
-          return isCurrentStatus ? '✓ Watching' : 'Watching';
-        case 'COMPLETED': 
-          return isCurrentStatus ? '✓ Completed' : 'Completed';
-        default: 
-          return isCurrentStatus ? `✓ ${status}` : status;
-      }
+      return isCurrentStatus ? `✓ ${statusDisplay}` : statusDisplay;
     } else {
       // Original text for other pages
       switch (status) {
@@ -169,7 +197,7 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
           return isCurrentStatus ? '✓ Completed' : 'Mark Complete';
         case 'DROPPED':
           return isCurrentStatus ? '✓ Dropped' : '+ Dropped';
-        default: return isCurrentStatus ? `✓ ${status}` : `+ ${status}`;
+        default: return isCurrentStatus ? `✓ ${statusDisplay}` : `+ ${statusDisplay}`;
       }
     }
   };
@@ -195,25 +223,26 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
   };
 
   return (
-    <div className="card cursor-pointer hover:shadow-lg transition-all duration-200 group">
-      <div onClick={handleClick} className="relative">
-        <div className="aspect-w-3 aspect-h-4 mb-4">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-200 group flex flex-col h-full">
+      <div onClick={handleClick} className="relative flex-1 flex flex-col">
+        {/* Fixed aspect ratio image container */}
+        <div className="aspect-[3/4] bg-gray-200 relative overflow-hidden">
           <img 
-            className="w-full h-64 object-cover rounded-lg" 
+            className="w-full h-full object-cover" 
             src={anime.imageUrl || 'https://via.placeholder.com/300x400'} 
             alt={anime.title} 
           />
           
           {/* Status badge if anime is in user's list */}
           {isInList && (
-            <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-              {currentStatus === 'PLAN_TO_WATCH' ? 'Planned' : currentStatus?.replace('_', ' ')}
+            <div className={`absolute top-2 right-2 ${getStatusBadgeColor(currentStatus || '')} text-white px-2 py-1 rounded-full text-xs font-medium`}>
+              {getStatusDisplay(currentStatus || '')}
             </div>
           )}
           
           {/* Hover overlay with quick action buttons */}
           {user && (
-            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
+            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
               <div className="flex gap-2">
                 <button
                   onClick={(e) => handleToggleList(e, AnimeStatus.PLAN_TO_WATCH)}
@@ -241,22 +270,31 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
           )}
         </div>
         
-        <div className="space-y-2">
-          <h3 className="font-bold text-lg text-gray-900 line-clamp-2">{anime.title}</h3>
+        {/* Content section with fixed height structure */}
+        <div className="p-4 flex-1 flex flex-col">
+          {/* Title - fixed to 2 lines */}
+          <h3 className="font-bold text-lg text-gray-900 line-clamp-2 leading-tight mb-2 min-h-[3.5rem]">
+            {anime.title}
+          </h3>
           
-          <div className="flex items-center justify-between text-sm text-gray-600">
+          {/* Metadata row */}
+          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
             <span>{anime.year || 'Unknown'}</span>
-            <span>{anime.episodes ? `${anime.episodes} eps` : 'Movie'}</span>
+            {anime.episodes && (
+              <span>{anime.episodes} eps</span>
+            )}
           </div>
           
+          {/* Score */}
           {anime.score && (
-            <div className="flex items-center">
+            <div className="flex items-center mb-2">
               <span className="text-yellow-500">⭐</span>
               <span className="ml-1 text-sm font-medium">{anime.score}</span>
             </div>
           )}
           
-          <div className="flex flex-wrap gap-1">
+          {/* Genres - fixed height container */}
+          <div className="flex flex-wrap gap-1 mb-3 min-h-[2rem]">
             {anime.genres.slice(0, 3).map((genre, index) => (
               <span
                 key={index}
@@ -272,16 +310,51 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
             )}
           </div>
           
+          {/* Description - flexible height based on available space */}
           {anime.description && (
-            <p className="text-gray-600 text-sm line-clamp-2">
+            <p className="text-gray-600 text-sm line-clamp-3 mb-3">
               {anime.description}
             </p>
           )}
         </div>
       </div>
       
-      {/* Quick action buttons at bottom */}
-      <div className="mt-3 flex gap-2">
+      {/* Show ratings and notes if anime is in list - positioned before buttons */}
+      {isInList && userAnimeEntry ? (
+        <div className="px-4">
+          <div className="p-3 bg-gray-50 rounded-lg mb-3">
+            <div className="flex items-center gap-3">
+              <img 
+                src={anime.imageUrl || 'https://via.placeholder.com/50x70'} 
+                alt={anime.title} 
+                className="w-12 h-16 object-cover rounded" 
+              />
+              <div className="flex-1">
+                <h4 className="font-semibold text-sm line-clamp-1">{anime.title}</h4>
+                <p className="text-xs text-gray-600">
+                  Rating: {userAnimeEntry.personalRating ? `${userAnimeEntry.personalRating}/10` : 'Not rated'}
+                </p>
+                <p className="text-xs text-gray-600 line-clamp-2">
+                  Notes: {userAnimeEntry.notes || 'No notes'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : user ? (
+        <div className="px-4">
+          <div className="p-4 bg-gray-50 rounded-lg mb-3 border-2 border-dashed border-gray-200">
+            <div className="text-center text-gray-400">
+              <div className="text-xl mb-2">✨</div>
+              <p className="text-sm font-medium mb-1">Add to your list</p>
+              <p className="text-xs">Rate & review this anime</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      
+      {/* Quick action buttons at bottom - fixed height */}
+      <div className="p-4 pt-0 flex gap-2">
         {user ? (
           <>
             <button
@@ -322,28 +395,6 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
           onClose={() => setIsModalOpen(false)}
           onSave={handleSaveRating}
         />
-      )}
-
-      {/* Show ratings and notes if anime is in list */}
-      {isInList && userAnimeEntry && (
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-          <div className="flex items-center gap-3">
-            <img 
-              src={anime.imageUrl || 'https://via.placeholder.com/50x70'} 
-              alt={anime.title} 
-              className="w-12 h-16 object-cover rounded" 
-            />
-            <div className="flex-1">
-              <h4 className="font-semibold text-sm">{anime.title}</h4>
-              <p className="text-xs text-gray-600">
-                Rating: {userAnimeEntry.personalRating ? `${userAnimeEntry.personalRating}/10` : 'Not rated'}
-              </p>
-              <p className="text-xs text-gray-600">
-                Notes: {userAnimeEntry.notes || 'No notes'}
-              </p>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

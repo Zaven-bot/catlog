@@ -17,6 +17,59 @@ const DashboardPage = () => {
     const [selectedAnime, setSelectedAnime] = useState<UserAnime | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
+    // Helper function to get rating badge color based on score
+    const getRatingBadgeColor = (rating: number | null | undefined) => {
+        if (!rating) {
+            return 'bg-gray-500'; // Gray for no rating
+        }
+        
+        if (rating >= 8) {
+            return 'bg-green-500'; // Green for excellent (8-10)
+        } else if (rating >= 6) {
+            return 'bg-yellow-500'; // Yellow for good (6-7)
+        } else if (rating >= 4) {
+            return 'bg-orange-500'; // Orange for okay (4-5)
+        } else {
+            return 'bg-red-500'; // Red for poor (1-3)
+        }
+    };
+
+    // Helper function to get consistent status display
+    const getStatusDisplay = (status: string) => {
+        switch (status) {
+            case 'PLAN_TO_WATCH':
+                return 'Planned';
+            case 'WATCHING':
+                return 'Watching';
+            case 'COMPLETED':
+                return 'Completed';
+            case 'ON_HOLD':
+                return 'On Hold';
+            case 'DROPPED':
+                return 'Dropped';
+            default:
+                return status;
+        }
+    };
+
+    // Helper function to get status colors
+    const getStatusColors = (status: string) => {
+        switch (status) {
+            case 'COMPLETED':
+                return { bg: 'bg-green-100', text: 'text-green-800', badge: 'bg-green-500' };
+            case 'WATCHING':
+                return { bg: 'bg-blue-100', text: 'text-blue-800', badge: 'bg-blue-500' };
+            case 'ON_HOLD':
+                return { bg: 'bg-yellow-100', text: 'text-yellow-800', badge: 'bg-yellow-500' };
+            case 'DROPPED':
+                return { bg: 'bg-red-100', text: 'text-red-800', badge: 'bg-red-500' };
+            case 'PLAN_TO_WATCH':
+                return { bg: 'bg-gray-100', text: 'text-gray-800', badge: 'bg-gray-500' };
+            default:
+                return { bg: 'bg-gray-100', text: 'text-gray-800', badge: 'bg-gray-500' };
+        }
+    };
+
     useEffect(() => {
         if (!authLoading && !user) {
             router.push('/login');
@@ -98,105 +151,112 @@ const DashboardPage = () => {
 
             {/* Ratings Section */}
             <div className="mt-12">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">⭐ Your Ratings & Notes</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">⭐ Your Anime Collection</h2>
                 
-                {userAnimeList.filter(item => item.personalRating || item.notes).length === 0 ? (
+                {userAnimeList.length === 0 ? (
                     <div className="text-center py-12 bg-gray-50 rounded-lg">
-                        <div className="text-6xl mb-4">📝</div>
-                        <p className="text-gray-600 mb-4">No ratings or notes yet!</p>
+                        <div className="text-6xl mb-4">📺</div>
+                        <p className="text-gray-600 mb-4">No anime in your list yet!</p>
                         <p className="text-sm text-gray-500">
-                            Add ratings and notes to your anime from your <a href="/my-list" className="text-purple-600 hover:text-purple-700">My List</a> page.
+                            Start adding anime from the <a href="/search" className="text-purple-600 hover:text-purple-700">Search</a> page.
                         </p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {userAnimeList
-                            .filter(item => item.personalRating || item.notes)
-                            .map((anime) => (
-                            <div key={anime.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                                {/* Anime Image */}
-                                <div className="aspect-[3/4] bg-gray-200 relative overflow-hidden">
-                                    {anime.anime.imageUrl ? (
-                                        <img
-                                            src={anime.anime.imageUrl}
-                                            alt={anime.anime.title}
-                                            className="w-full h-full object-cover"
-                                            onError={(e) => {
-                                                e.currentTarget.src = '/placeholder-anime.jpg';
-                                            }}
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-100 to-pink-100">
-                                            <div className="text-4xl">📺</div>
-                                        </div>
-                                    )}
-                                    
-                                    {/* Rating Badge */}
-                                    {anime.personalRating && (
-                                        <div className="absolute top-2 right-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-sm font-bold shadow-lg">
-                                            ⭐ {anime.personalRating}/10
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                {/* Content */}
-                                <div className="p-4">
-                                    {/* Title */}
-                                    <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 leading-tight">
-                                        {anime.anime.title}
-                                    </h3>
-                                    
-                                    {/* Status Badge */}
-                                    <div className="mb-3">
-                                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                                            anime.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                                            anime.status === 'WATCHING' ? 'bg-blue-100 text-blue-800' :
-                                            anime.status === 'ON_HOLD' ? 'bg-yellow-100 text-yellow-800' :
-                                            anime.status === 'DROPPED' ? 'bg-red-100 text-red-800' :
-                                            'bg-gray-100 text-gray-800'
-                                        }`}>
-                                            {anime.status.replace('_', ' ').toLowerCase()}
-                                        </span>
+                        {userAnimeList.map((anime) => {
+                            const statusColors = getStatusColors(anime.status);
+                            const ratingBadgeColor = getRatingBadgeColor(anime.personalRating);
+                            
+                            return (
+                                <div key={anime.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                                    {/* Anime Image */}
+                                    <div className="aspect-[3/4] bg-gray-200 relative overflow-hidden">
+                                        {anime.anime.imageUrl ? (
+                                            <img
+                                                src={anime.anime.imageUrl}
+                                                alt={anime.anime.title}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    e.currentTarget.src = '/placeholder-anime.jpg';
+                                                }}
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-100 to-pink-100">
+                                                <div className="text-4xl">📺</div>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Rating Badge - color matches status */}
+                                        {anime.personalRating ? (
+                                            <div className={`absolute top-2 right-2 ${ratingBadgeColor} text-white px-2 py-1 rounded-full text-sm font-bold shadow-lg`}>
+                                                ⭐ {anime.personalRating}/10
+                                            </div>
+                                        ) : (
+                                            <div className={`absolute top-2 right-2 ${ratingBadgeColor} text-white px-2 py-1 rounded-full text-sm font-bold shadow-lg`}>
+                                                N/A
+                                            </div>
+                                        )}
                                     </div>
                                     
-                                    {/* Rating */}
-                                    {anime.personalRating && (
+                                    {/* Content */}
+                                    <div className="p-4">
+                                        {/* Title */}
+                                        <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 leading-tight">
+                                            {anime.anime.title}
+                                        </h3>
+                                        
+                                        {/* Status Badge */}
+                                        <div className="mb-3">
+                                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${statusColors.bg} ${statusColors.text}`}>
+                                                {getStatusDisplay(anime.status)}
+                                            </span>
+                                        </div>
+                                        
+                                        {/* Rating */}
                                         <div className="mb-3">
                                             <p className="text-sm text-gray-600">
                                                 <span className="font-medium">Your Rating:</span> 
-                                                <span className="ml-1 text-yellow-600 font-bold">{anime.personalRating}/10</span>
+                                                {anime.personalRating ? (
+                                                    <span className="ml-1 text-yellow-600 font-bold">{anime.personalRating}/10</span>
+                                                ) : (
+                                                    <span className="ml-1 text-gray-500 italic">Not rated yet - Add your rating!</span>
+                                                )}
                                             </p>
                                         </div>
-                                    )}
-                                    
-                                    {/* Notes */}
-                                    {anime.notes && (
+                                        
+                                        {/* Notes */}
                                         <div className="mb-4">
                                             <p className="text-sm text-gray-600 mb-1 font-medium">Notes:</p>
-                                            <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded italic line-clamp-3">
-                                                "{anime.notes}"
-                                            </p>
+                                            {anime.notes ? (
+                                                <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded italic line-clamp-3">
+                                                    "{anime.notes}"
+                                                </p>
+                                            ) : (
+                                                <p className="text-sm text-gray-500 bg-gray-50 p-2 rounded italic">
+                                                    No notes yet - Add your thoughts!
+                                                </p>
+                                            )}
                                         </div>
-                                    )}
-                                    
-                                    {/* Action Buttons */}
-                                    <div className="flex gap-2 pt-3 border-t border-gray-100">
-                                        <button
-                                            onClick={() => handleEditRating(anime.id)}
-                                            className="flex-1 bg-purple-600 text-white px-3 py-2 rounded text-sm font-medium hover:bg-purple-700 transition-colors"
-                                        >
-                                            ✏️ Edit
-                                        </button>
-                                        <a
-                                            href={`/anime/${anime.anime.malId}`}
-                                            className="flex-1 text-center bg-gray-100 text-gray-700 px-3 py-2 rounded text-sm font-medium hover:bg-gray-200 transition-colors"
-                                        >
-                                            👁️ View
-                                        </a>
+                                        
+                                        {/* Action Buttons */}
+                                        <div className="flex gap-2 pt-3 border-t border-gray-100">
+                                            <button
+                                                onClick={() => handleEditRating(anime.id)}
+                                                className="flex-1 bg-purple-600 text-white px-3 py-2 rounded text-sm font-medium hover:bg-purple-700 transition-colors"
+                                            >
+                                                ✏️ {anime.personalRating || anime.notes ? 'Edit' : 'Rate'}
+                                            </button>
+                                            <a
+                                                href={`/anime/${anime.anime.malId}`}
+                                                className="flex-1 text-center bg-gray-100 text-gray-700 px-3 py-2 rounded text-sm font-medium hover:bg-gray-200 transition-colors"
+                                            >
+                                                👁️ View
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>

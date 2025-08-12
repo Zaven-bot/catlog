@@ -210,16 +210,6 @@ const MyAnimeListPage: React.FC = () => {
           {filteredAnime.map((userAnime) => (
             <div key={userAnime.id} className="relative">
               <AnimeCard anime={userAnime.anime} />
-              
-              {/* User-specific info overlay */}
-              <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-xs">
-                {userAnime.personalRating && (
-                  <span className="mr-2">★ {userAnime.personalRating}/10</span>
-                )}
-                {userAnime.episodesWatched !== undefined && userAnime.anime.episodes && (
-                  <span>{userAnime.episodesWatched}/{userAnime.anime.episodes}</span>
-                )}
-              </div>
             </div>
           ))}
         </div>
