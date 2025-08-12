@@ -67,7 +67,7 @@ const VirtualCat: React.FC = () => {
                 return {
                     videoSrc: '/videos/two.mp4',
                     bgGradient: 'from-purple-500 to-pink-500',
-                    message: `Amazing! ${watchingCount} anime at once! You're getting serious! ✨`,
+                    message: `Amazing! ${watchingCount} anime at once! You're getting serious!`,
                     subtext: `Currently watching: ${watchingCount} anime`,
                     borderColor: 'border-purple-300'
                 };
@@ -149,18 +149,11 @@ const VirtualCat: React.FC = () => {
                         <div className="text-yellow-400 animate-bounce">✨</div>
                     </div>
                 )}
-                
-                {/* Floating Z's for Bored State */}
-                {mood === 'bored' && (
-                    <div className="absolute -top-1 right-2">
-                        <div className="text-gray-400 animate-pulse text-xs">💭</div>
-                    </div>
-                )}
             </div>
             
             {/* Quick Action Suggestions */}
             {user && (
-                <div className="mt-4 text-center">
+                <div className="mt-8 text-center">
                     {mood === 'bored' && (
                         <a 
                             href="/search" 

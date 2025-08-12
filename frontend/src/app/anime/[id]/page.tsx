@@ -32,7 +32,7 @@ interface Anime {
 const AnimeDetailPage: React.FC = () => {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { addAnimeToList, removeAnimeFromList, isAnimeInList, getAnimeStatus } = useUserAnimeList();
   const [anime, setAnime] = useState<Anime | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,6 +94,31 @@ const AnimeDetailPage: React.FC = () => {
       setAddingToList(false);
     }
   };
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+      return;
+    }
+  }, [user, authLoading, router]);
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated (will redirect)
+  if (!user) {
+    return null;
+  }
 
   if (loading) {
     return (

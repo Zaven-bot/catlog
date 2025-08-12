@@ -16,20 +16,20 @@ const statusOptions: { value: AnimeStatus | 'ALL'; label: string; color: string 
   { value: AnimeStatus.DROPPED, label: 'Dropped', color: 'bg-red-500' },
 ];
 
-const MyAnimeListPage = () => {
-  const { user, loading } = useAuth();
+const MyAnimeListPage: React.FC = () => {
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { userAnimeList, loading: listLoading, error, getUserAnimeStats, refreshList } = useUserAnimeList();
+  const { userAnimeList, loading, error, refreshList, getUserAnimeStats } = useUserAnimeList();
   const [selectedStatus, setSelectedStatus] = useState<AnimeStatus | 'ALL'>('ALL');
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
     // Only redirect if we're done loading and there's no user
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.push('/login');
       return;
     }
-  }, [user, loading, router]);
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     const loadStats = async () => {
@@ -37,10 +37,10 @@ const MyAnimeListPage = () => {
       setStats(statsData);
     };
 
-    if (user && !loading) {
+    if (user && !authLoading) {
       loadStats();
     }
-  }, [user, loading, getUserAnimeStats]);
+  }, [user, authLoading, getUserAnimeStats]);
 
   // Calculate stats from local state instead of making API calls
   const calculateLocalStats = () => {
@@ -80,7 +80,7 @@ const MyAnimeListPage = () => {
   };
 
   // Show loading while checking authentication
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
@@ -91,12 +91,12 @@ const MyAnimeListPage = () => {
     );
   }
 
-  // Don't render if user is not authenticated (will redirect)
+  // Don't render if not authenticated (will redirect)
   if (!user) {
     return null;
   }
 
-  if (listLoading && userAnimeList.length === 0) {
+  if (loading && userAnimeList.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">

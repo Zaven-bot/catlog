@@ -28,13 +28,15 @@ const HomePage = () => {
                     </p>
                 </div>
 
-                {/* Search Bar */}
-                <div className="mb-4 w-full max-w-2xl">
-                    <SearchBar />
-                </div>
+                {/* Search Bar - Only for logged in users */}
+                {user && (
+                    <div className="mb-2 w-full max-w-2xl">
+                        <SearchBar />
+                    </div>
+                )}
 
-                {/* Virtual Cat - The Star of the Show */}
-                <VirtualCat />
+                {/* Virtual Cat - The Star of the Show - Only for logged in users */}
+                {user && <VirtualCat />}
 
                 {/* Quick Actions for New Users */}
                 {!user && (
@@ -60,7 +62,7 @@ const HomePage = () => {
                 )}
 
                 {/* Features Preview */}
-                <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
                     <div className="text-center p-6 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg">
                         <div className="text-4xl mb-3">📺</div>
                         <h4 className="font-semibold text-gray-800 mb-2">Track Your Anime</h4>
@@ -70,9 +72,9 @@ const HomePage = () => {
                     </div>
                     <div className="text-center p-6 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg">
                         <div className="text-4xl mb-3">😺</div>
-                        <h4 className="font-semibold text-gray-800 mb-2">Virtual Cat Companion</h4>
+                        <h4 className="font-semibold text-gray-800 mb-2">Cat Memes</h4>
                         <p className="text-sm text-gray-600">
-                            Your cat reacts to your anime watching habits and keeps you motivated
+                            Celebrate your anime watching habits with hilarious cat memes that get funnier as you watch more
                         </p>
                     </div>
                     <div className="text-center p-6 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg">

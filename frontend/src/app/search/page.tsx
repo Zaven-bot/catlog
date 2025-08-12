@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAnime } from '../../hooks/useAnime';
+import { useAuth } from '../../hooks/useAuth';
+import { useRouter } from 'next/navigation';
 import AnimeCard from '../../components/AnimeCard';
 
 interface Anime {
@@ -29,6 +31,8 @@ interface AdvancedFilters {
 }
 
 const SearchPage = () => {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.get('q');
   const [searchResults, setSearchResults] = useState<Anime[]>([]);
@@ -466,6 +470,31 @@ const SearchPage = () => {
   };
 
   const activeFiltersCount = getActiveFiltersCount();
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+      return;
+    }
+  }, [user, authLoading, router]);
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated (will redirect)
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
