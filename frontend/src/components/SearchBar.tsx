@@ -58,11 +58,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onResults }) => {
         onChange={handleInputChange}
         placeholder="Search for anime..."
         disabled={isSearching}
-        className="border border-gray-300 rounded-l-lg p-3 flex-grow focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50"
+        className="border border-gray-300 rounded-l-lg px-4 py-2 flex-grow focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50"
       />
       <button 
         type="submit" 
-        className="btn-primary rounded-l-none border-l-0 disabled:opacity-50"
+        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-r-lg border border-purple-600 transition-colors disabled:opacity-50"
         disabled={!query.trim() || isSearching}
       >
         {isSearching ? 'Searching...' : 'Search'}

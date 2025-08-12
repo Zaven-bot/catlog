@@ -167,6 +167,8 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
           return isCurrentStatus ? '✓ Watching' : '+ Watching';
         case 'COMPLETED': 
           return isCurrentStatus ? '✓ Completed' : 'Mark Complete';
+        case 'DROPPED':
+          return isCurrentStatus ? '✓ Dropped' : '+ Dropped';
         default: return isCurrentStatus ? `✓ ${status}` : `+ ${status}`;
       }
     }

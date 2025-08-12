@@ -1,30 +1,44 @@
-import './globals.css'
-import type { Metadata } from 'next'
+'use client';
 
-export const metadata: Metadata = {
-  title: 'CatLog - Your Anime Companion',
-  description: 'Track anime with your virtual cat companion',
-}
+import './globals.css'
+import { useAuth } from '../hooks/useAuth';
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
     <html lang="en">
       <body>
         <div className="min-h-screen flex flex-col">
           <header className="bg-gray-800 text-white p-4">
-            <h1 className="text-2xl font-bold">🐾 CatLog</h1>
-            <nav className="mt-2">
-              <a href="/" className="text-gray-300 hover:text-white mr-4">Home</a>
-              <a href="/anime" className="text-gray-300 hover:text-white mr-4">Browse</a>
-              <a href="/search" className="text-gray-300 hover:text-white mr-4">Search</a>
-              <a href="/my-list" className="text-gray-300 hover:text-white mr-4">My List</a>
-              <a href="/dashboard" className="text-gray-300 hover:text-white mr-4">Dashboard</a>
-              <a href="/login" className="text-gray-300 hover:text-white">Login</a>
-            </nav>
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold">🐾 CatLog</h1>
+              <nav className="flex space-x-4">
+                <a href="/" className="text-gray-300 hover:text-white">Home</a>
+                <a href="/anime" className="text-gray-300 hover:text-white">Browse</a>
+                <a href="/search" className="text-gray-300 hover:text-white">Search</a>
+                <a href="/my-list" className="text-gray-300 hover:text-white">My List</a>
+                <a href="/dashboard" className="text-gray-300 hover:text-white">Dashboard</a>
+                {user ? (
+                  <button 
+                    onClick={handleLogout}
+                    className="text-gray-300 hover:text-white"
+                  >
+                    Logout
+                  </button>
+                ) : (
+                  <a href="/login" className="text-gray-300 hover:text-white">Login</a>
+                )}
+              </nav>
+            </div>
           </header>
           <main className="flex-grow p-4">
             {children}
