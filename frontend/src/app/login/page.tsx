@@ -20,7 +20,7 @@ const LoginPage: React.FC = () => {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user && !loading) {
+    if (user && typeof user === 'object' && user.id && !loading) {
       router.push('/');
     }
   }, [user, loading, router]);
@@ -99,7 +99,7 @@ const LoginPage: React.FC = () => {
   }
 
   // Don't render if user is logged in (will redirect)
-  if (user) {
+  if (user && typeof user === 'object' && user.id) {
     return null;
   }
 
