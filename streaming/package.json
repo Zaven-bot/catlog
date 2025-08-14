@@ -1,0 +1,21 @@
+{
+  "name": "catlog-streaming",
+  "version": "1.0.0",
+  "description": "Kafka streaming components for CatLog live popularity updates",
+  "main": "index.js",
+  "scripts": {
+    "producer": "node producer.js",
+    "consumer": "node consumer.js",
+    "dev:producer": "nodemon producer.js",
+    "dev:consumer": "nodemon consumer.js"
+  },
+  "dependencies": {
+    "kafkajs": "^2.2.4",
+    "dotenv": "^16.3.0",
+    "pg": "^8.11.3",
+    "@prisma/client": "^5.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

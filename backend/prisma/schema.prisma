@@ -103,6 +103,22 @@ model EtlLogs {
   createdAt    DateTime @default(now())
 }
 
+// Live Streaming Data Table
+model LivePopularity {
+  id           Int      @id @default(autoincrement())
+  malId        Int      
+  title        String
+  currentScore Float?
+  liveMembers  Int?
+  trendingRank Int?
+  popularityChange Float? // Percentage change
+  lastUpdate   DateTime @default(now())
+  eventType    String   // SCORE_UPDATE, MEMBER_UPDATE, TRENDING_CHANGE
+  
+  @@index([malId])
+  @@index([lastUpdate])
+}
+
 enum AnimeStatus {
   WATCHING
   COMPLETED

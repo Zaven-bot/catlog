@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import StatsChart from '../../components/StatsChart';
 import VirtualCat from '../../components/VirtualCat';
 import EditRatingModal from '../../components/EditRatingModal';
+import { LivePopularityWidget } from '../../components/LivePopularityWidget';
 import { UserAnime } from '../../../../shared/types';
 
 const DashboardPage = () => {
@@ -148,6 +149,11 @@ const DashboardPage = () => {
 
             {/* Stats and Charts */}
             <StatsChart />
+
+            {/* Live Popularity Widget */}
+            <div className="mt-8 flex justify-center">
+                <LivePopularityWidget />
+            </div>
 
             {/* Ratings Section */}
             <div className="mt-12">
