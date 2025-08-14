@@ -24,8 +24,8 @@ RUN npm run build
 # Production stage
 FROM node:18-alpine AS production
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init and OpenSSL for Prisma compatibility
+RUN apk add --no-cache dumb-init openssl1.1-compat
 
 # Create app user
 RUN addgroup -g 1001 -S nodejs
