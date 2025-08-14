@@ -1,18 +1,25 @@
 import { PrismaClient } from '@prisma/client';
-import { getAnimeRecommendations } from './openAI'; // Assuming you have a function to get recommendations from OpenAI
+import { getAnimeRecommendations } from './openAI';
 
 const prisma = new PrismaClient();
 
 export const getRecommendations = async (userId: string) => {
     try {
-        // Fetch user's watched anime
-        const watchedAnime = await prisma.anime.findMany({
-            where: { userId },
-            select: { title: true, genre: true, rating: true },
+        // Fetch user's watched anime from userAnime table
+        const watchedAnime = await prisma.userAnime.findMany({
+            where: { userId: parseInt(userId) },
+            include: { 
+                anime: {
+                    select: { title: true, genres: true, score: true }
+                }
+            },
         });
 
+        // Extract anime data for recommendations
+        const animeData = watchedAnime.map((entry: any) => entry.anime);
+
         // Generate recommendations based on watched anime
-        const recommendations = await getAnimeRecommendations(watchedAnime);
+        const recommendations = await getAnimeRecommendations(animeData);
 
         return recommendations;
     } catch (error) {

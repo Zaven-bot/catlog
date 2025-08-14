@@ -23,16 +23,16 @@ export const registrationSchema = z.object({
 });
 
 // Function to validate anime entry
-export const validateAnimeEntry = (data) => {
+export const validateAnimeEntry = (data: any) => {
   return animeEntrySchema.parse(data);
 };
 
 // Function to validate login data
-export const validateLogin = (data) => {
+export const validateLogin = (data: any) => {
   return loginSchema.parse(data);
 };
 
 // Function to validate registration data
-export const validateRegistration = (data) => {
+export const validateRegistration = (data: any) => {
   return registrationSchema.parse(data);
 };

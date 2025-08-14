@@ -1,10 +1,23 @@
 import { Request, Response } from 'express';
-import { User } from '../../prisma/schema'; // Adjust the import based on your actual User model location
-import { prisma } from '../../utils/jwt'; // Adjust the import based on your actual prisma client location
+import { PrismaClient } from '@prisma/client';
 
-export const getUserProfile = async (req: Request, res: Response) => {
+const prisma = new PrismaClient();
+
+interface AuthenticatedRequest extends Request {
+    user?: {
+        id: number;
+        username: string;
+        email: string;
+    };
+}
+
+export const getUserProfile = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const userId = req.user.id; // Assuming user ID is stored in the request after authentication
+        if (!req.user) {
+            return res.status(401).json({ message: 'User not authenticated' });
+        }
+        
+        const userId = req.user.id;
         const user = await prisma.user.findUnique({
             where: { id: userId },
         });
@@ -19,14 +32,18 @@ export const getUserProfile = async (req: Request, res: Response) => {
     }
 };
 
-export const updateUserProfile = async (req: Request, res: Response) => {
+export const updateUserProfile = async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const userId = req.user.id; // Assuming user ID is stored in the request after authentication
-        const { name, email } = req.body;
+        if (!req.user) {
+            return res.status(401).json({ message: 'User not authenticated' });
+        }
+        
+        const userId = req.user.id;
+        const { username, email } = req.body;
 
         const updatedUser = await prisma.user.update({
             where: { id: userId },
-            data: { name, email },
+            data: { username, email },
         });
 
         res.json(updatedUser);

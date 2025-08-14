@@ -98,7 +98,7 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   } catch (error) {
     clearTimeout(timeoutId);
     console.error('[AUTH] API call failed:', error);
-    if (error.name === 'AbortError') {
+    if (error instanceof Error && error.name === 'AbortError') {
       throw new Error('Request timeout - backend server may not be running');
     }
     throw error;
