@@ -101,6 +101,15 @@ model EtlLogs {
   errorMessage String?
   pipelineStep String   // EXTRACT, TRANSFORM, LOAD
   createdAt    DateTime @default(now())
+  
+  // Data Quality Validation Fields (Stage 5)
+  validationSuccess        Boolean?
+  validationRunId         String?
+  totalExpectations       Int?
+  successfulExpectations  Int?
+  failedExpectations      Int?
+  validationSuccessPercent Float?
+  validationDetails       Json?
 }
 
 // Live Streaming Data Table

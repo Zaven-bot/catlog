@@ -14,3 +14,6 @@ pydantic==2.1.1
 # Cloud dependencies for Stage 2
 google-cloud-bigquery==3.11.4
 google-auth==2.22.0
+
+# Data Quality & Governance (Stage 5)
+great-expectations==0.18.19

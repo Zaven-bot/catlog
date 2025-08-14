@@ -1,6 +1,6 @@
 # CatLog ETL Pipeline
 
-A robust ETL (Extract, Transform, Load) pipeline for processing anime data from the Jikan API into PostgreSQL and BigQuery.
+A robust ETL (Extract, Transform, Load) pipeline for processing anime data from the Jikan API into PostgreSQL and BigQuery with comprehensive data quality validation.
 
 ## Features
 
@@ -8,6 +8,7 @@ A robust ETL (Extract, Transform, Load) pipeline for processing anime data from 
 - **Transform**: Converts raw JSON data into structured, validated format
 - **Load**: Stores both raw and processed data in PostgreSQL
 - **Cloud Sync**: Push processed data to BigQuery data warehouse (Stage 2)
+- **Data Quality & Governance**: Great Expectations validation with automated data docs (Stage 5)
 - **Materialized Views**: Auto-generated BigQuery views for analytics
 - **Logging**: Comprehensive ETL run tracking and error handling
 - **CLI Interface**: Easy-to-use command-line tools
@@ -22,20 +23,23 @@ etl/
 ├── extractor.py           # Jikan API data extraction
 ├── transformer.py         # Data transformation and validation
 ├── bigquery_manager.py    # BigQuery cloud warehouse operations
+├── data_quality.py        # Great Expectations data quality validation
 ├── pipeline.py            # Main ETL orchestrator and CLI
 ├── bigquery_setup.sql     # BigQuery SQL scripts and views
 ├── requirements.txt       # Python dependencies
 ├── .env.example           # Environment variables template
+├── gx/                    # Great Expectations configuration directory
 └── tests/
     ├── test_extractor.py
-    └── test_transformer.py
+    ├── test_transformer.py
+    └── test_data_quality.py
 ```
 
 ## Database Schema
 
 ### PostgreSQL Tables
 
-The ETL pipeline creates and uses three new tables:
+The ETL pipeline creates and uses three main tables:
 
 #### RawAnimeData
 Stores raw JSON responses from Jikan API:
@@ -62,7 +66,7 @@ Stores transformed, structured data:
 - `etlRunId`: Links to ETL run
 
 #### EtlLogs
-Tracks all ETL pipeline runs:
+Tracks all ETL pipeline runs with data quality validation results:
 - `id`: Primary key
 - `runId`: Unique run identifier
 - `startTime`, `endTime`: Run duration
@@ -70,6 +74,14 @@ Tracks all ETL pipeline runs:
 - `rowsProcessed`: Number of records processed
 - `errorMessage`: Error details if failed
 - `pipelineStep`: EXTRACT, TRANSFORM, LOAD, COMPLETE, ERROR
+- **Data Quality Fields (Stage 5)**:
+  - `validationSuccess`: Boolean validation result
+  - `validationRunId`: Great Expectations run ID
+  - `totalExpectations`: Total validation rules checked
+  - `successfulExpectations`: Passed validation rules
+  - `failedExpectations`: Failed validation rules
+  - `validationSuccessPercent`: Success percentage
+  - `validationDetails`: JSON details of failed expectations
 
 ### BigQuery Tables (Cloud Warehouse)
 
@@ -111,9 +123,23 @@ Optional (for BigQuery cloud sync):
 
 ### 3. Database Migration
 
-The ETL tables are already created via Prisma migration `20250814170714_add_etl_tables`.
+The ETL tables are already created via Prisma migrations:
+- `20250814170714_add_etl_tables`
+- `20250114000000_add_data_quality_fields`
 
-### 4. BigQuery Setup (Optional)
+### 4. Data Quality Setup
+
+Set up Great Expectations data quality framework:
+
+```bash
+# Initialize data quality framework
+python pipeline.py setup-data-quality
+
+# Generate data docs (after first run)
+python pipeline.py generate-data-docs
+```
+
+### 5. BigQuery Setup (Optional)
 
 If using cloud sync, set up BigQuery resources:
 
@@ -125,7 +151,7 @@ python pipeline.py test-connection
 python pipeline.py setup-bigquery
 ```
 
-### 5. Test Connection
+### 6. Test Connection
 
 ```bash
 python pipeline.py test-connection
@@ -144,6 +170,9 @@ python pipeline.py run
 
 # Skip cloud sync for one run
 python pipeline.py run --skip-cloud
+
+# Skip data quality validation
+python pipeline.py run --skip-validation
 
 # Extract top anime with custom page limit
 python pipeline.py run --max-pages 5
@@ -166,6 +195,22 @@ python pipeline.py logs
 
 # Show more logs
 python pipeline.py logs --limit 20
+
+# Show validation results
+python pipeline.py validation-logs
+```
+
+### Data Quality Management
+
+```bash
+# Set up data quality framework
+python pipeline.py setup-data-quality
+
+# Generate Great Expectations Data Docs
+python pipeline.py generate-data-docs
+
+# View validation results
+python pipeline.py validation-logs --limit 20
 ```
 
 ### BigQuery Management
@@ -203,12 +248,53 @@ python -m pytest tests/ -v
 4. **Cloud Load**: Push processed data to BigQuery
 5. **Views**: Create/update materialized views for analytics
 
+### Stage 5: Data Quality & Governance
+6. **Validation**: Run Great Expectations data quality checks
+7. **Documentation**: Generate automated data quality reports
+8. **Monitoring**: Log validation results and fail pipeline on critical issues
+
 ### Key Features:
 - Rate limiting: 1 second between API requests
 - Retry logic: 3 attempts with exponential backoff
 - Pagination support for large datasets
 - Data cleaning and validation
 - Comprehensive logging and error tracking
+- **Data quality validation with 15+ validation rules**
+- **Automated data documentation generation**
+
+## Data Quality Validation
+
+### Validation Rules
+The pipeline includes comprehensive data quality checks:
+
+1. **Required Fields**: mal_id and title must exist and not be null
+2. **Data Types**: Correct types for all fields
+3. **Score Range**: Scores between 0-10
+4. **Year Range**: Valid anime years (1900 to current year + 5)
+5. **Episode Count**: Non-negative episode counts
+6. **Member Count**: Non-negative member counts
+7. **Status Values**: Valid anime status values
+8. **Season Values**: Valid season names (spring, summer, fall, winter)
+9. **Uniqueness**: mal_id must be unique
+10. **Title Length**: Reasonable title lengths (1-500 characters)
+11. **Row Count**: Reasonable batch sizes for processing
+
+### Validation Thresholds
+- **Pipeline Success**: 80%+ validation success rate
+- **Pipeline Warning**: 80-99% validation success rate
+- **Pipeline Failure**: <80% validation success rate
+
+### Data Docs
+Great Expectations automatically generates comprehensive data quality documentation:
+- Validation results history
+- Data profiling statistics
+- Expectation suite details
+- Interactive data quality reports
+
+Access data docs after running the pipeline:
+```bash
+python pipeline.py generate-data-docs
+```
 
 ## BigQuery Analytics
 
@@ -273,6 +359,8 @@ Each ETL run generates:
 - Success/failure status
 - Row counts processed
 - Cloud sync status
+- **Data quality validation results**
+- **Great Expectations validation metrics**
 - Detailed error messages
 - Log files with timestamps
 
@@ -283,6 +371,8 @@ The pipeline handles:
 - Invalid data formats
 - Database connection issues
 - BigQuery authentication/permission errors
+- **Data quality validation failures**
+- **Critical vs. warning validation thresholds**
 - Partial failures (continues processing)
 - Cloud sync failures (doesn't affect PostgreSQL)
 
@@ -297,7 +387,19 @@ Status: SUCCESS
 Records Processed: 250
 Duration: 45.67 seconds
 Cloud Sync: ✅ Enabled
+Data Quality Validation: ✅ Enabled
 ✅ Pipeline completed successfully!
+```
+
+### Data Quality Validation Output
+```
+==================================================
+DATA QUALITY VALIDATION PHASE
+==================================================
+✅ Data quality validation passed (95.2% success rate)
+📊 15 expectations evaluated, 14 successful, 1 failed
+🔍 Failed expectations: expect_column_values_to_be_unique (1 duplicate mal_id)
+📈 Data Docs generated successfully!
 ```
 
 ## Google Cloud Setup
@@ -335,9 +437,12 @@ gcloud iam service-accounts keys create catlog-etl-key.json \
 For production use, schedule the ETL pipeline with cron:
 
 ```bash
-# Run daily at midnight with cloud sync
+# Run daily at midnight with cloud sync and data quality validation
 0 0 * * * cd /path/to/catlog/etl && python pipeline.py run
 
 # Run every 6 hours, skip cloud sync
 0 */6 * * * cd /path/to/catlog/etl && python pipeline.py run --skip-cloud
+
+# Run with validation disabled for testing
+0 */6 * * * cd /path/to/catlog/etl && python pipeline.py run --skip-validation
 ```

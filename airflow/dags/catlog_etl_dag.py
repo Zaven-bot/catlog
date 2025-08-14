@@ -63,7 +63,7 @@ def extract_anime_data(**context) -> Dict[str, Any]:
     
     # Add ETL directory to Python path
     etl_path = '/opt/airflow/dags/etl'
-    if etl_path not in sys.path:
+    if (etl_path not in sys.path):
         sys.path.insert(0, etl_path)
     
     from extractor import JikanExtractor
@@ -116,7 +116,7 @@ def transform_anime_data(**context) -> Dict[str, Any]:
     
     # Add ETL directory to Python path
     etl_path = '/opt/airflow/dags/etl'
-    if etl_path not in sys.path:
+    if (etl_path not in sys.path):
         sys.path.insert(0, etl_path)
     
     from transformer import AnimeTransformer
@@ -157,7 +157,7 @@ def load_to_postgresql(**context) -> Dict[str, Any]:
     
     # Add ETL directory to Python path
     etl_path = '/opt/airflow/dags/etl'
-    if etl_path not in sys.path:
+    if (etl_path not in sys.path):
         sys.path.insert(0, etl_path)
     
     from database import DatabaseManager
@@ -211,7 +211,7 @@ def load_to_bigquery(**context) -> Dict[str, Any]:
     
     # Add ETL directory to Python path
     etl_path = '/opt/airflow/dags/etl'
-    if etl_path not in sys.path:
+    if (etl_path not in sys.path):
         sys.path.insert(0, etl_path)
     
     from bigquery_manager import BigQueryManager
@@ -258,6 +258,56 @@ def load_to_bigquery(**context) -> Dict[str, Any]:
         'bigquery_records': len(processed_data),
         'materialized_view_updated': view_success,
         'load_timestamp': datetime.now().isoformat()
+    }
+
+
+def validate_data_quality(**context) -> Dict[str, Any]:
+    """Validate processed anime data using Great Expectations"""
+    import sys
+    
+    # Add ETL directory to Python path
+    etl_path = '/opt/airflow/dags/etl'
+    if etl_path not in sys.path:
+        sys.path.insert(0, etl_path)
+    
+    from data_quality import DataQualityManager
+    import logging
+    
+    # Get data from previous task
+    transformation_results = context['task_instance'].xcom_pull(task_ids='transform_anime_data')
+    run_id = transformation_results['run_id']
+    processed_data = transformation_results['processed_data']
+    
+    logging.info(f"Starting data quality validation for run_id: {run_id}")
+    logging.info(f"Validating {len(processed_data)} processed records")
+    
+    # Initialize data quality manager
+    dq_manager = DataQualityManager()
+    
+    # Run data quality validation
+    validation_success, validation_summary = dq_manager.validate_data(processed_data)
+    validation_results = dq_manager.log_validation_results(validation_summary, run_id)
+    
+    # Generate data docs
+    dq_manager.generate_data_docs()
+    
+    # Check if validation should fail the pipeline
+    success_percent = validation_summary['statistics']['success_percent']
+    if not validation_success and success_percent < 80:
+        error_msg = f"Data quality validation failed with {success_percent:.1f}% success rate"
+        logging.error(error_msg)
+        raise Exception(error_msg)
+    elif not validation_success:
+        logging.warning(f"Data quality validation passed with warnings ({success_percent:.1f}% success rate)")
+    else:
+        logging.info(f"✅ Data quality validation passed ({success_percent:.1f}% success rate)")
+    
+    return {
+        'run_id': run_id,
+        'validation_success': validation_success,
+        'validation_summary': validation_summary,
+        'validation_results': validation_results,
+        'validation_timestamp': datetime.now().isoformat()
     }
 
 
@@ -382,6 +432,20 @@ with dag:
             """,
         )
         
+        validate_data_quality_task = PythonOperator(
+            task_id='validate_data_quality',
+            python_callable=validate_data_quality,
+            doc_md="""
+            **Data Quality Validation Task**
+            
+            Validates processed anime data using Great Expectations:
+            - Runs data quality checks
+            - Logs validation results
+            - Generates data docs
+            - Fails pipeline if validation success rate is below threshold
+            """,
+        )
+        
         # PostgreSQL Load
         postgresql_load_task = PythonOperator(
             task_id='load_to_postgresql',
@@ -412,7 +476,7 @@ with dag:
         )
         
         # Set task dependencies within the group
-        extract_task >> transform_task >> [postgresql_load_task, bigquery_load_task]
+        extract_task >> transform_task >> validate_data_quality_task >> [postgresql_load_task, bigquery_load_task]
     
     # Notification Tasks
     success_notification = PythonOperator(

@@ -138,22 +138,84 @@ class DatabaseManager:
     
     def log_etl_run(self, run_id: str, status: str, pipeline_step: str, 
                    start_time: datetime, end_time: Optional[datetime] = None, 
-                   rows_processed: Optional[int] = None, error_message: Optional[str] = None):
-        """Log ETL run information"""
+                   rows_processed: Optional[int] = None, error_message: Optional[str] = None,
+                   validation_results: Optional[Dict[str, Any]] = None):
+        """Log ETL run information with optional data quality validation results"""
+        cursor = self.connection.cursor()
+        
+        try:
+            if validation_results:
+                cursor.execute("""
+                    INSERT INTO "EtlLogs" (
+                        "runId", status, "pipelineStep", "startTime", "endTime", "rowsProcessed", "errorMessage",
+                        "validationSuccess", "validationRunId", "totalExpectations", "successfulExpectations",
+                        "failedExpectations", "validationSuccessPercent", "validationDetails"
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT ("runId") DO UPDATE SET
+                        status = EXCLUDED.status,
+                        "endTime" = EXCLUDED."endTime",
+                        "rowsProcessed" = EXCLUDED."rowsProcessed",
+                        "errorMessage" = EXCLUDED."errorMessage",
+                        "validationSuccess" = EXCLUDED."validationSuccess",
+                        "validationRunId" = EXCLUDED."validationRunId",
+                        "totalExpectations" = EXCLUDED."totalExpectations",
+                        "successfulExpectations" = EXCLUDED."successfulExpectations",
+                        "failedExpectations" = EXCLUDED."failedExpectations",
+                        "validationSuccessPercent" = EXCLUDED."validationSuccessPercent",
+                        "validationDetails" = EXCLUDED."validationDetails"
+                """, (
+                    run_id, status, pipeline_step, start_time, end_time, rows_processed, error_message,
+                    validation_results.get('validation_success'),
+                    validation_results.get('validation_run_id'),
+                    validation_results.get('total_expectations'),
+                    validation_results.get('successful_expectations'),
+                    validation_results.get('failed_expectations'),
+                    validation_results.get('success_percent'),
+                    json.dumps(validation_results.get('failed_expectation_details', []))
+                ))
+            else:
+                cursor.execute("""
+                    INSERT INTO "EtlLogs" ("runId", status, "pipelineStep", "startTime", "endTime", "rowsProcessed", "errorMessage")
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT ("runId") DO UPDATE SET
+                        status = EXCLUDED.status,
+                        "endTime" = EXCLUDED."endTime",
+                        "rowsProcessed" = EXCLUDED."rowsProcessed",
+                        "errorMessage" = EXCLUDED."errorMessage"
+                """, (run_id, status, pipeline_step, start_time, end_time, rows_processed, error_message))
+        except Exception as e:
+            raise Exception(f"Failed to log ETL run: {str(e)}")
+        finally:
+            cursor.close()
+
+    def update_validation_results(self, run_id: str, validation_results: Dict[str, Any]):
+        """Update existing ETL run log with validation results"""
         cursor = self.connection.cursor()
         
         try:
             cursor.execute("""
-                INSERT INTO "EtlLogs" ("runId", status, "pipelineStep", "startTime", "endTime", "rowsProcessed", "errorMessage")
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT ("runId") DO UPDATE SET
-                    status = EXCLUDED.status,
-                    "endTime" = EXCLUDED."endTime",
-                    "rowsProcessed" = EXCLUDED."rowsProcessed",
-                    "errorMessage" = EXCLUDED."errorMessage"
-            """, (run_id, status, pipeline_step, start_time, end_time, rows_processed, error_message))
+                UPDATE "EtlLogs" SET
+                    "validationSuccess" = %s,
+                    "validationRunId" = %s,
+                    "totalExpectations" = %s,
+                    "successfulExpectations" = %s,
+                    "failedExpectations" = %s,
+                    "validationSuccessPercent" = %s,
+                    "validationDetails" = %s
+                WHERE "runId" = %s
+            """, (
+                validation_results.get('validation_success'),
+                validation_results.get('validation_run_id'),
+                validation_results.get('total_expectations'),
+                validation_results.get('successful_expectations'),
+                validation_results.get('failed_expectations'),
+                validation_results.get('success_percent'),
+                json.dumps(validation_results.get('failed_expectation_details', [])),
+                run_id
+            ))
         except Exception as e:
-            raise Exception(f"Failed to log ETL run: {str(e)}")
+            raise Exception(f"Failed to update validation results: {str(e)}")
         finally:
             cursor.close()
     
