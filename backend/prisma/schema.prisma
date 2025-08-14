@@ -56,6 +56,53 @@ model Anime {
   userAnime    UserAnime[]
 }
 
+// ETL Pipeline Tables
+model RawAnimeData {
+  id            Int      @id @default(autoincrement())
+  malId         Int
+  rawJson       Json
+  sourceApi     String   @default("jikan")
+  ingestedAt    DateTime @default(now())
+  etlRunId      String
+}
+
+model ProcessedAnime {
+  id            Int      @id @default(autoincrement())
+  malId         Int      @unique
+  title         String
+  titleEnglish  String?
+  genres        String[]
+  score         Float?
+  members       Int?
+  popularity    Int?
+  rank          Int?
+  airedFrom     DateTime?
+  airedTo       DateTime?
+  status        String
+  episodes      Int?
+  duration      String?
+  rating        String?
+  studios       String[]
+  year          Int?
+  season        String?
+  imageUrl      String?
+  synopsis      String?
+  processedAt   DateTime @default(now())
+  etlRunId      String
+}
+
+model EtlLogs {
+  id           Int      @id @default(autoincrement())
+  runId        String   @unique
+  startTime    DateTime
+  endTime      DateTime?
+  status       String   // SUCCESS, FAILED, RUNNING
+  rowsProcessed Int?
+  errorMessage String?
+  pipelineStep String   // EXTRACT, TRANSFORM, LOAD
+  createdAt    DateTime @default(now())
+}
+
 enum AnimeStatus {
   WATCHING
   COMPLETED
