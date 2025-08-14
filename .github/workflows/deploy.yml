@@ -1,0 +1,204 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  AWS_REGION: us-west-2
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-west-2.amazonaws.com
+  
+jobs:
+  test:
+    name: Test Services
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_catlog
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            streaming/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: etl/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Install streaming dependencies
+        working-directory: ./streaming
+        run: npm ci
+
+      - name: Install ETL dependencies
+        working-directory: ./etl
+        run: pip install -r requirements.txt
+
+      - name: Run backend tests
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_catlog
+        run: |
+          npm run build
+          npm test
+
+      - name: Run ETL tests
+        working-directory: ./etl
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_catlog
+        run: python -m pytest tests/ -v
+
+  build-and-push:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    
+    strategy:
+      matrix:
+        service: [backend, etl, streaming]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push Docker image
+        working-directory: ./${{ matrix.service }}
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: catlog-dev-${{ matrix.service }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+  deploy-infrastructure:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+          TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+          TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+          TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+          TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        run: terraform apply -auto-approve tfplan
+
+  deploy-services:
+    name: Deploy Services
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-infrastructure]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update ECS Backend Service
+        run: |
+          aws ecs update-service \
+            --cluster catlog-dev-cluster \
+            --service catlog-dev-backend \
+            --force-new-deployment
+
+      - name: Wait for Backend Deployment
+        run: |
+          aws ecs wait services-stable \
+            --cluster catlog-dev-cluster \
+            --services catlog-dev-backend
+
+      - name: Run Database Migrations
+        run: |
+          aws ecs run-task \
+            --cluster catlog-dev-cluster \
+            --task-definition catlog-dev-backend \
+            --overrides '{
+              "containerOverrides": [{
+                "name": "backend",
+                "command": ["npx", "prisma", "migrate", "deploy"]
+              }]
+            }' \
+            --network-configuration '{
+              "awsvpcConfiguration": {
+                "subnets": ["'$(aws ec2 describe-subnets --filters "Name=tag:Name,Values=catlog-dev-private-subnet-1" --query "Subnets[0].SubnetId" --output text)'"],
+                "securityGroups": ["'$(aws ec2 describe-security-groups --filters "Name=tag:Name,Values=catlog-dev-ecs-tasks-sg" --query "SecurityGroups[0].GroupId" --output text)'"]
+              }
+            }'

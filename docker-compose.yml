@@ -1,0 +1,222 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: catlog-postgres
+    environment:
+      POSTGRES_DB: catlog
+      POSTGRES_USER: catlog_user
+      POSTGRES_PASSWORD: catlog_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/prisma/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catlog_user -d catlog"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - catlog-network
+
+  # Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    container_name: catlog-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - catlog-network
+
+  # Backend API Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: catlog-backend
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://catlog_user:catlog_password@postgres:5432/catlog
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key}
+      REDIS_URL: redis://redis:6379
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - catlog-network
+    restart: unless-stopped
+
+  # ETL Pipeline Service
+  etl:
+    build:
+      context: ./etl
+      dockerfile: Dockerfile
+    container_name: catlog-etl
+    environment:
+      DATABASE_URL: postgresql://catlog_user:catlog_password@postgres:5432/catlog
+      ENABLE_CLOUD_SYNC: ${ENABLE_CLOUD_SYNC:-false}
+      JIKAN_RATE_LIMIT_DELAY: ${JIKAN_RATE_LIMIT_DELAY:-1.0}
+      JIKAN_MAX_RETRIES: ${JIKAN_MAX_RETRIES:-3}
+      ETL_BATCH_SIZE: ${ETL_BATCH_SIZE:-100}
+      ETL_MAX_PAGES: ${ETL_MAX_PAGES:-10}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
+      BIGQUERY_DATASET: ${BIGQUERY_DATASET:-catlog_anime_data}
+      BIGQUERY_TABLE: ${BIGQUERY_TABLE:-processed_anime}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./etl/gx:/app/gx
+      - etl_logs:/app/logs
+    networks:
+      - catlog-network
+    profiles:
+      - etl
+    restart: "no"
+
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: catlog-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    networks:
+      - catlog-network
+
+  # Kafka Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: catlog-kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - catlog-network
+
+  # Kafka Producer
+  kafka-producer:
+    build:
+      context: ./streaming
+      dockerfile: Dockerfile
+    container_name: catlog-kafka-producer
+    environment:
+      KAFKA_BROKER: kafka:29092
+      DATABASE_URL: postgresql://catlog_user:catlog_password@postgres:5432/catlog
+      PRODUCER_INTERVAL_MS: ${PRODUCER_INTERVAL_MS:-60000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: ["node", "producer.js"]
+    networks:
+      - catlog-network
+    restart: unless-stopped
+
+  # Kafka Consumer
+  kafka-consumer:
+    build:
+      context: ./streaming
+      dockerfile: Dockerfile
+    container_name: catlog-kafka-consumer
+    environment:
+      KAFKA_BROKER: kafka:29092
+      DATABASE_URL: postgresql://catlog_user:catlog_password@postgres:5432/catlog
+      CONSUMER_GROUP_ID: ${CONSUMER_GROUP_ID:-anime-popularity-group}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: ["node", "consumer.js"]
+    networks:
+      - catlog-network
+    restart: unless-stopped
+
+  # Kafka UI for monitoring
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: catlog-kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: catlog-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - catlog-network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: catlog-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+    networks:
+      - catlog-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  kafka_data:
+  zookeeper_data:
+  zookeeper_logs:
+  etl_logs:
+
+networks:
+  catlog-network:
+    driver: bridge
