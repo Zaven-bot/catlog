@@ -1,0 +1,15 @@
+# Airflow requirements for CatLog ETL Pipeline
+# Core ETL dependencies
+psycopg2-binary==2.9.7
+python-dotenv==1.0.0
+requests==2.31.0
+pydantic==2.1.1
+
+# BigQuery dependencies (optional)
+google-cloud-bigquery==3.11.4
+google-auth==2.22.0
+
+# Additional Airflow providers
+apache-airflow-providers-postgres==5.6.0
+apache-airflow-providers-google==10.10.1
+apache-airflow-providers-slack==7.3.0
