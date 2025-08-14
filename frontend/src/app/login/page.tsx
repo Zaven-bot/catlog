@@ -7,6 +7,22 @@ import { useAuth } from '../../hooks/useAuth';
 const LoginPage: React.FC = () => {
   const router = useRouter();
   const { login, register, user, loading, error, clearError } = useAuth();
+  
+  // Add comprehensive logging
+  console.log('[LOGIN PAGE] Render - Auth state:', { 
+    user: user ? `${user.username} (id: ${user.id})` : 'null', 
+    loading, 
+    error,
+    timestamp: new Date().toISOString()
+  });
+
+  // Force re-render when auth state changes by adding dependencies
+  const [, forceRender] = useState(0);
+  useEffect(() => {
+    console.log('[LOGIN PAGE] Auth state effect triggered:', { loading, user: !!user });
+    forceRender(prev => prev + 1);
+  }, [loading, user, error]);
+
   const [isRegistering, setIsRegistering] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({

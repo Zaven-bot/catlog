@@ -6,7 +6,7 @@ CatLog is a full-stack web application that combines anime tracking, personalize
 
 CatLog solves two problems at once:
 - **Anime Discovery**: Helps users track what they’ve watched, discover new shows, and visualize their viewing habits.
-- **Emotional Engagement**: Adds a virtual cat that responds to user activity—making the experience more fun, rewarding, and memorable.
+- **Emotional Engagement**: Adds cats memes that responds to user activity—making the experience more fun, rewarding, and memorable.
 
 This project was built as a personal portfolio piece to showcase full-stack development skills while creating something delightful and meaningful.
 
@@ -14,10 +14,9 @@ This project was built as a personal portfolio piece to showcase full-stack deve
 
 ## 🧸 Features
 
-### 🐱 Virtual Cat Companion
-- Reacts to your activity: purrs when you log anime, looks bored if you’re inactive.
-- Displays mood based on your recent engagement.
-- Offers playful feedback and encouragement.
+### 🐱 Virtual Cat Meme
+- Reacts to your activity
+- Offers playful feedback and encouragement
 
 ### 📺 Anime Logging
 - Search for anime using the [Jikan API](https://jikan.moe/) (MyAnimeList).
@@ -107,19 +106,15 @@ This project was built as a personal portfolio piece to showcase full-stack deve
 
 ### 2.2 Virtual Cat Enhancement
 **Priority: High** | **Estimated Time: 4-5 hours**
-- [ ] More cat moods and animations
+- [ ] More cat memes
 - [ ] Cat reactions to specific anime genres
-- [ ] Activity-based cat evolution/growth
-- [ ] Cat customization options
 - [ ] Cat achievement system
-- [ ] Cat feeding/care mechanics
 
 ### 2.3 Statistics & Analytics
 **Priority: Medium** | **Estimated Time: 3-4 hours**
 - [ ] Real statistics from user data
 - [ ] Viewing time calculations
 - [ ] Genre preference analysis
-- [ ] Monthly/yearly anime consumption charts
 - [ ] Personal anime milestones
 - [ ] Export statistics feature
 
@@ -131,9 +126,7 @@ This project was built as a personal portfolio piece to showcase full-stack deve
 **Priority: Medium** | **Estimated Time: 5-6 hours**
 - [ ] Basic recommendation algorithm (genre-based)
 - [ ] OpenAI integration for intelligent recommendations
-- [ ] Mood-based anime suggestions
 - [ ] "Similar to what you watched" feature
-- [ ] Friend recommendations (if social features added)
 
 ### 3.2 UI/UX Improvements
 **Priority: Medium** | **Estimated Time: 4-5 hours**
@@ -147,10 +140,7 @@ This project was built as a personal portfolio piece to showcase full-stack deve
 ### 3.3 Social Features (Optional)
 **Priority: Low** | **Estimated Time: 8-10 hours**
 - [ ] User profiles (public/private)
-- [ ] Follow other users
 - [ ] Share anime lists
-- [ ] Comment on anime
-- [ ] Community recommendations
 
 ---
 
@@ -229,7 +219,7 @@ This project was built as a personal portfolio piece to showcase full-stack deve
 ## 💡 **Success Metrics**
 - Users can register, login, and manage their anime lists
 - Search returns real anime data from Jikan API
-- Virtual cat responds meaningfully to user activity
+- Cat memes responds meaningfully to user activity
 - Statistics show real user data trends
 - App is deployed and accessible online
 - Performance is smooth on mobile and desktop

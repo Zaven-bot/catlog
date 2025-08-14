@@ -8,10 +8,21 @@ function Navigation() {
   const { user, logout, loading } = useAuth();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  // Debug logging for auth state changes
+  // Enhanced debug logging for auth state changes
   useEffect(() => {
-    console.log('Navigation: Auth state changed:', { user: user?.username || 'Not logged in', loading });
+    console.log('[NAVIGATION] Auth state changed:', { 
+      user: user?.username || 'Not logged in', 
+      loading, 
+      timestamp: new Date().toISOString() 
+    });
   }, [user, loading]);
+
+  // Additional debug log on every render
+  console.log('[NAVIGATION] Render - Auth state:', { 
+    user: user?.username || 'Not logged in', 
+    loading, 
+    timestamp: new Date().toISOString() 
+  });
 
   const handleLogoutClick = () => {
     setShowLogoutConfirm(true);

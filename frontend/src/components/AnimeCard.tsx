@@ -223,12 +223,11 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-200 group flex flex-col h-full">
-      <div onClick={handleClick} className="relative flex-1 flex flex-col">
-        {/* Fixed aspect ratio image container */}
-        <div className="aspect-[3/4] bg-gray-200 relative overflow-hidden">
+    <div className="card cursor-pointer hover:shadow-lg transition-all duration-200 group">
+      <div onClick={handleClick} className="relative">
+        <div className="aspect-w-3 aspect-h-4 mb-4">
           <img 
-            className="w-full h-full object-cover" 
+            className="w-full h-64 object-cover rounded-lg" 
             src={anime.imageUrl || 'https://via.placeholder.com/300x400'} 
             alt={anime.title} 
           />
@@ -242,7 +241,7 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
           
           {/* Hover overlay with quick action buttons */}
           {user && (
-            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
               <div className="flex gap-2">
                 <button
                   onClick={(e) => handleToggleList(e, AnimeStatus.PLAN_TO_WATCH)}
@@ -270,31 +269,24 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
           )}
         </div>
         
-        {/* Content section with fixed height structure */}
-        <div className="p-4 flex-1 flex flex-col">
-          {/* Title - fixed to 2 lines */}
-          <h3 className="font-bold text-lg text-gray-900 line-clamp-2 leading-tight mb-2 min-h-[3.5rem]">
-            {anime.title}
-          </h3>
+        <div className="space-y-2">
+          <h3 className="font-bold text-lg text-gray-900 line-clamp-2">{anime.title}</h3>
           
-          {/* Metadata row */}
-          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+          <div className="flex items-center justify-between text-sm text-gray-600">
             <span>{anime.year || 'Unknown'}</span>
             {anime.episodes && (
               <span>{anime.episodes} eps</span>
             )}
           </div>
           
-          {/* Score */}
           {anime.score && (
-            <div className="flex items-center mb-2">
+            <div className="flex items-center">
               <span className="text-yellow-500">⭐</span>
               <span className="ml-1 text-sm font-medium">{anime.score}</span>
             </div>
           )}
           
-          {/* Genres - fixed height container */}
-          <div className="flex flex-wrap gap-1 mb-3 min-h-[2rem]">
+          <div className="flex flex-wrap gap-1">
             {anime.genres.slice(0, 3).map((genre, index) => (
               <span
                 key={index}
@@ -310,51 +302,16 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
             )}
           </div>
           
-          {/* Description - flexible height based on available space */}
           {anime.description && (
-            <p className="text-gray-600 text-sm line-clamp-3 mb-3">
+            <p className="text-gray-600 text-sm line-clamp-2">
               {anime.description}
             </p>
           )}
         </div>
       </div>
       
-      {/* Show ratings and notes if anime is in list - positioned before buttons */}
-      {isInList && userAnimeEntry ? (
-        <div className="px-4">
-          <div className="p-3 bg-gray-50 rounded-lg mb-3">
-            <div className="flex items-center gap-3">
-              <img 
-                src={anime.imageUrl || 'https://via.placeholder.com/50x70'} 
-                alt={anime.title} 
-                className="w-12 h-16 object-cover rounded" 
-              />
-              <div className="flex-1">
-                <h4 className="font-semibold text-sm line-clamp-1">{anime.title}</h4>
-                <p className="text-xs text-gray-600">
-                  Rating: {userAnimeEntry.personalRating ? `${userAnimeEntry.personalRating}/10` : 'Not rated'}
-                </p>
-                <p className="text-xs text-gray-600 line-clamp-2">
-                  Notes: {userAnimeEntry.notes || 'No notes'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : user ? (
-        <div className="px-4">
-          <div className="p-4 bg-gray-50 rounded-lg mb-3 border-2 border-dashed border-gray-200">
-            <div className="text-center text-gray-400">
-              <div className="text-xl mb-2">✨</div>
-              <p className="text-sm font-medium mb-1">Add to your list</p>
-              <p className="text-xs">Rate & review this anime</p>
-            </div>
-          </div>
-        </div>
-      ) : null}
-      
-      {/* Quick action buttons at bottom - fixed height */}
-      <div className="p-4 pt-0 flex gap-2">
+      {/* Quick action buttons at bottom */}
+      <div className="mt-3 flex gap-2">
         {user ? (
           <>
             <button
@@ -395,6 +352,28 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
           onClose={() => setIsModalOpen(false)}
           onSave={handleSaveRating}
         />
+      )}
+
+      {/* Show ratings and notes if anime is in list */}
+      {isInList && userAnimeEntry && (
+        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-3">
+            <img 
+              src={anime.imageUrl || 'https://via.placeholder.com/50x70'} 
+              alt={anime.title} 
+              className="w-12 h-16 object-cover rounded" 
+            />
+            <div className="flex-1">
+              <h4 className="font-semibold text-sm">{anime.title}</h4>
+              <p className="text-xs text-gray-600">
+                Rating: {userAnimeEntry.personalRating ? `${userAnimeEntry.personalRating}/10` : 'Not rated'}
+              </p>
+              <p className="text-xs text-gray-600">
+                Notes: {userAnimeEntry.notes || 'No notes'}
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

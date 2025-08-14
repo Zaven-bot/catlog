@@ -41,54 +41,121 @@ let authSubscribers: Array<() => void> = [];
 
 // Helper function to notify all subscribers
 const notifySubscribers = () => {
+  console.log('[AUTH] Notifying subscribers. State:', { 
+    user: globalUser ? `${globalUser.username} (id: ${globalUser.id})` : 'null', 
+    loading: globalLoading, 
+    error: globalError,
+    hasInitialized: globalHasInitialized 
+  });
   authSubscribers.forEach(callback => callback());
 };
 
-// API call function
+// API call function with timeout
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
-  const token = localStorage.getItem('token');
+  let token = null;
   
-  console.log('Making API call to:', `${process.env.NEXT_PUBLIC_API_URL}/auth${endpoint}`);
-  console.log('Token exists:', !!token);
-  
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
-    },
-  });
-
-  const data = await response.json();
-  console.log('API Response:', { status: response.status, data });
-
-  if (!response.ok) {
-    throw new Error(data.error || `HTTP error! status: ${response.status}`);
+  try {
+    if (typeof window !== 'undefined') {
+      token = localStorage.getItem('token');
+      console.log('[AUTH] localStorage access successful, token exists:', !!token);
+    } else {
+      console.log('[AUTH] localStorage not available (server-side)');
+    }
+  } catch (error) {
+    console.error('[AUTH] Error accessing localStorage:', error);
   }
+  
+  console.log('[AUTH] Making API call to:', `${process.env.NEXT_PUBLIC_API_URL}/auth${endpoint}`);
+  console.log('[AUTH] Environment API URL:', process.env.NEXT_PUBLIC_API_URL);
+  
+  // Add timeout to prevent hanging
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    console.log('[AUTH] API call timeout triggered after 5 seconds');
+    controller.abort();
+  }, 5000); // 5 second timeout
+  
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth${endpoint}`, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+        ...options.headers,
+      },
+    });
 
-  return data;
+    clearTimeout(timeoutId);
+    const data = await response.json();
+    console.log('[AUTH] API Response:', { status: response.status, data });
+
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.error('[AUTH] API call failed:', error);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout - backend server may not be running');
+    }
+    throw error;
+  }
 };
 
 // Initialize auth state - only run once globally
 const initializeAuth = async () => {
-  if (globalHasInitialized) return;
+  if (globalHasInitialized) {
+    console.log('[AUTH] Already initialized, skipping');
+    return;
+  }
+  
+  console.log('[AUTH] Starting initialization...');
+  globalHasInitialized = true; // Set this immediately to prevent multiple calls
   
   try {
-    const token = localStorage.getItem('token');
-    console.log('Initial auth check - token exists:', !!token);
+    // Check if we're in the browser environment
+    if (typeof window === 'undefined') {
+      console.log('[AUTH] Server-side rendering detected, skipping token check');
+      globalUser = null;
+      globalLoading = false;
+      notifySubscribers();
+      return;
+    }
+
+    let token = null;
+    try {
+      token = localStorage.getItem('token');
+      console.log('[AUTH] Initial auth check - token exists:', !!token);
+    } catch (error) {
+      console.error('[AUTH] Error accessing localStorage:', error);
+      token = null;
+    }
+    
     if (token) {
+      console.log('[AUTH] Token found, validating with backend...');
       const response = await apiCall('/me');
-      console.log('User fetched successfully:', response.user);
+      console.log('[AUTH] User fetched successfully:', response.user);
       globalUser = response.user;
+    } else {
+      console.log('[AUTH] No token found, user not logged in');
+      globalUser = null;
     }
   } catch (error) {
-    console.error('Error fetching user during initial load:', error);
-    localStorage.removeItem('token');
+    console.error('[AUTH] Error fetching user during initial load:', error);
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+      }
+    } catch (e) {
+      console.error('[AUTH] Error removing token from localStorage:', e);
+    }
     globalUser = null;
   } finally {
     globalLoading = false;
-    globalHasInitialized = true;
+    console.log('[AUTH] Auth initialization complete, loading set to false');
     notifySubscribers();
   }
 };
@@ -183,27 +250,64 @@ export const subscribeToAuth = (callback: () => void) => {
 
 // Hook that uses global state
 const useAuth = (): UseAuthReturn => {
-  const [, forceUpdate] = useState({});
+  const [renderTrigger, setRenderTrigger] = useState(0);
   const router = useRouter();
 
   // Force component to re-render when global state changes
   useEffect(() => {
+    console.log('[AUTH HOOK] Setting up subscription for component');
+    
     const unsubscribe = subscribeToAuth(() => {
-      forceUpdate({});
+      console.log('[AUTH HOOK] Received state update, forcing re-render. Global state:', {
+        user: globalUser ? `${globalUser.username} (${globalUser.id})` : 'null',
+        loading: globalLoading,
+        error: globalError,
+        hasInitialized: globalHasInitialized
+      });
+      setRenderTrigger(prev => prev + 1); // More reliable than forceUpdate({})
     });
 
     // Initialize auth on first hook usage
     if (!globalHasInitialized) {
+      console.log('[AUTH HOOK] Triggering initialization');
       initializeAuth();
+      
+      // Safety fallback - if initialization takes too long, stop loading
+      setTimeout(() => {
+        if (globalLoading && !globalUser) {
+          console.warn('[AUTH HOOK] Auth initialization timeout - forcing loading to false');
+          globalLoading = false;
+          globalHasInitialized = true;
+          notifySubscribers();
+        }
+      }, 10000); // 10 second maximum wait
+    } else {
+      console.log('[AUTH HOOK] Auth already initialized, current state:', {
+        user: globalUser ? `${globalUser.username} (${globalUser.id})` : 'null',
+        loading: globalLoading,
+        error: globalError
+      });
     }
 
     return unsubscribe;
   }, []);
 
-  return {
+  // Ensure we're always returning the current global state
+  const currentState = {
     user: globalUser,
     loading: globalLoading,
     error: globalError,
+    hasInitialized: globalHasInitialized,
+    renderTrigger
+  };
+
+  // Debug log current state on every render
+  console.log('[AUTH HOOK] Current state:', currentState);
+
+  return {
+    user: currentState.user,
+    loading: currentState.loading,
+    error: currentState.error,
     login,
     register,
     logout,
