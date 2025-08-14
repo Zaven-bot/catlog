@@ -12,6 +12,7 @@ from config import ETLConfig
 from database import DatabaseManager
 from extractor import JikanExtractor
 from transformer import AnimeTransformer
+from bigquery_manager import BigQueryManager
 
 
 class CatLogETL:
@@ -22,6 +23,7 @@ class CatLogETL:
         self.db_manager = DatabaseManager()
         self.extractor = JikanExtractor()
         self.transformer = AnimeTransformer()
+        self.bigquery_manager = BigQueryManager()
         self.logger = self._setup_logging()
         self.run_id = str(uuid.uuid4())
     
@@ -45,10 +47,13 @@ class CatLogETL:
         
         self.logger.info(f"Starting ETL pipeline run {self.run_id}")
         self.logger.info(f"Source: {source}, Max pages: {max_pages}")
+        self.logger.info(f"Cloud sync enabled: {self.config.ENABLE_CLOUD_SYNC}")
         
         try:
             # Validate configuration
             self.config.validate()
+            if self.config.ENABLE_CLOUD_SYNC:
+                self.config.validate_bigquery()
             
             # Extract phase
             self.logger.info("=" * 50)
@@ -74,16 +79,34 @@ class CatLogETL:
             if not processed_data:
                 raise Exception("No data after transformation")
             
-            # Load phase
+            # Load phase - PostgreSQL
             self.logger.info("=" * 50)
-            self.logger.info("LOAD PHASE")
+            self.logger.info("LOAD PHASE - PostgreSQL")
             self.logger.info("=" * 50)
             
             with self.db_manager as db:
                 db.log_etl_run(self.run_id, "RUNNING", "LOAD", start_time)
                 processed_count = db.insert_processed_anime(processed_data, self.run_id)
                 total_records = processed_count
-                self.logger.info(f"Loaded {processed_count} processed records to database")
+                self.logger.info(f"Loaded {processed_count} processed records to PostgreSQL")
+            
+            # Load phase - BigQuery (Stage 2)
+            if self.config.ENABLE_CLOUD_SYNC:
+                self.logger.info("=" * 50)
+                self.logger.info("LOAD PHASE - BigQuery (Cloud Sync)")
+                self.logger.info("=" * 50)
+                
+                # Load data to BigQuery
+                bq_success = self.bigquery_manager.load_data(processed_data, self.run_id)
+                if bq_success:
+                    self.logger.info(f"Successfully synced {processed_count} records to BigQuery")
+                    
+                    # Create materialized view
+                    view_success = self.bigquery_manager.create_materialized_view()
+                    if view_success:
+                        self.logger.info("Materialized view for top anime by season created/updated")
+                else:
+                    self.logger.warning("BigQuery sync failed, but PostgreSQL load was successful")
             
             # Mark as successful
             end_time = datetime.now()
@@ -103,7 +126,8 @@ class CatLogETL:
                 "records_processed": total_records,
                 "duration_seconds": duration.total_seconds(),
                 "start_time": start_time.isoformat(),
-                "end_time": end_time.isoformat()
+                "end_time": end_time.isoformat(),
+                "cloud_sync_enabled": self.config.ENABLE_CLOUD_SYNC
             }
             
         except Exception as e:
@@ -125,7 +149,8 @@ class CatLogETL:
                 "records_processed": total_records,
                 "duration_seconds": (end_time - start_time).total_seconds(),
                 "start_time": start_time.isoformat(),
-                "end_time": end_time.isoformat()
+                "end_time": end_time.isoformat(),
+                "cloud_sync_enabled": self.config.ENABLE_CLOUD_SYNC
             }
     
     def _extract_data(self, source: str, max_pages: Optional[int], 
@@ -165,27 +190,44 @@ def cli():
 @click.option('--season', type=click.Choice(['spring', 'summer', 'fall', 'winter']), 
               help='Season for seasonal data (current season if not specified)')
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose logging')
-def run(source, max_pages, year, season, verbose):
+@click.option('--skip-cloud', is_flag=True, help='Skip cloud sync even if enabled in config')
+def run(source, max_pages, year, season, verbose, skip_cloud):
     """Run the ETL pipeline"""
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
     
-    etl = CatLogETL()
-    result = etl.run_full_pipeline(source, max_pages, year, season)
+    # Temporarily disable cloud sync if requested
+    original_cloud_setting = None
+    if skip_cloud:
+        import os
+        original_cloud_setting = os.environ.get('ENABLE_CLOUD_SYNC')
+        os.environ['ENABLE_CLOUD_SYNC'] = 'false'
+        click.echo("🔧 Cloud sync temporarily disabled for this run")
     
-    click.echo("\n" + "=" * 50)
-    click.echo("ETL PIPELINE RESULTS")
-    click.echo("=" * 50)
-    click.echo(f"Run ID: {result['run_id']}")
-    click.echo(f"Status: {result['status']}")
-    click.echo(f"Records Processed: {result['records_processed']}")
-    click.echo(f"Duration: {result['duration_seconds']:.2f} seconds")
+    try:
+        etl = CatLogETL()
+        result = etl.run_full_pipeline(source, max_pages, year, season)
+        
+        click.echo("\n" + "=" * 50)
+        click.echo("ETL PIPELINE RESULTS")
+        click.echo("=" * 50)
+        click.echo(f"Run ID: {result['run_id']}")
+        click.echo(f"Status: {result['status']}")
+        click.echo(f"Records Processed: {result['records_processed']}")
+        click.echo(f"Duration: {result['duration_seconds']:.2f} seconds")
+        click.echo(f"Cloud Sync: {'✅ Enabled' if result['cloud_sync_enabled'] else '❌ Disabled'}")
+        
+        if result['status'] == 'FAILED':
+            click.echo(f"Error: {result.get('error', 'Unknown error')}")
+            exit(1)
+        else:
+            click.echo("✅ Pipeline completed successfully!")
     
-    if result['status'] == 'FAILED':
-        click.echo(f"Error: {result.get('error', 'Unknown error')}")
-        exit(1)
-    else:
-        click.echo("✅ Pipeline completed successfully!")
+    finally:
+        # Restore original cloud sync setting
+        if skip_cloud and original_cloud_setting is not None:
+            import os
+            os.environ['ENABLE_CLOUD_SYNC'] = original_cloud_setting
 
 
 @cli.command()
@@ -213,18 +255,72 @@ def logs(limit):
 
 @cli.command()
 def test_connection():
-    """Test database connection"""
+    """Test database and BigQuery connections"""
     try:
         etl = CatLogETL()
         etl.config.validate()
         
+        # Test PostgreSQL
         with etl.db_manager as db:
-            click.echo("✅ Database connection successful!")
+            click.echo("✅ PostgreSQL connection successful!")
+        
+        # Test BigQuery if enabled
+        if etl.config.ENABLE_CLOUD_SYNC:
+            etl.config.validate_bigquery()
+            if etl.bigquery_manager.test_connection():
+                click.echo("✅ BigQuery connection successful!")
+            else:
+                click.echo("❌ BigQuery connection failed!")
+                exit(1)
+        else:
+            click.echo("⚪ BigQuery connection skipped (cloud sync disabled)")
             
         click.echo("✅ Configuration validation passed!")
         
     except Exception as e:
         click.echo(f"❌ Connection failed: {str(e)}")
+        exit(1)
+
+
+@cli.command()
+def setup_bigquery():
+    """Setup BigQuery dataset, table, and materialized view"""
+    try:
+        etl = CatLogETL()
+        
+        if not etl.config.ENABLE_CLOUD_SYNC:
+            click.echo("❌ Cloud sync is disabled. Enable it in .env to use BigQuery setup.")
+            exit(1)
+        
+        etl.config.validate_bigquery()
+        
+        click.echo("🔧 Setting up BigQuery resources...")
+        
+        # Create dataset
+        if etl.bigquery_manager.create_dataset_if_not_exists():
+            click.echo("✅ Dataset created/verified")
+        else:
+            click.echo("❌ Failed to create dataset")
+            exit(1)
+        
+        # Create table
+        if etl.bigquery_manager.create_table_if_not_exists():
+            click.echo("✅ Table created/verified")
+        else:
+            click.echo("❌ Failed to create table")
+            exit(1)
+        
+        # Create materialized view
+        if etl.bigquery_manager.create_materialized_view():
+            click.echo("✅ Materialized view created/verified")
+        else:
+            click.echo("❌ Failed to create materialized view")
+            exit(1)
+        
+        click.echo("🎉 BigQuery setup completed successfully!")
+        
+    except Exception as e:
+        click.echo(f"❌ BigQuery setup failed: {str(e)}")
         exit(1)
 
 
