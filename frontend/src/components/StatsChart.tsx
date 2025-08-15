@@ -141,7 +141,7 @@ const StatsChart: React.FC = () => {
                     userAnimeList.filter((entry: UserAnime) => entry.personalRating !== undefined && entry.personalRating >= 7 && entry.personalRating < 9).length,
                     userAnimeList.filter((entry: UserAnime) => entry.personalRating !== undefined && entry.personalRating >= 5 && entry.personalRating < 7).length,
                     userAnimeList.filter((entry: UserAnime) => entry.personalRating !== undefined && entry.personalRating > 0 && entry.personalRating < 5).length,
-                    userAnimeList.filter((entry: UserAnime) => entry.personalRating === undefined).length,
+                    userAnimeList.filter((entry: UserAnime) => entry.personalRating === undefined || entry.personalRating === null).length,
                 ],
                 backgroundColor: [
                     'rgba(34, 197, 94, 0.8)',    // Green for excellent
