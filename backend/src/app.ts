@@ -5,7 +5,6 @@ import { authRoutes } from './routes/auth';
 import { animeRoutes } from './routes/anime';
 import { userRoutes } from './routes/user';
 import { userAnimeRoutes } from './routes/userAnimeList';
-import { recommendationsRoutes } from './routes/recommendations';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -36,7 +35,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/anime', animeRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/user/anime-list', userAnimeRoutes);
-app.use('/api/recommendations', recommendationsRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
