@@ -6,14 +6,37 @@ CatLog is a full-stack anime tracking application with an integrated ETL pipelin
 
 ## 🛠️ Tech Stack
 
-| Layer              | Technology                                    |
-|--------------------|-----------------------------------------------|
-| **Frontend**       | Next.js 13+, TypeScript, TailwindCSS         |
-| **Backend API**    | Node.js, Express, RESTful APIs               |
-| **Database**       | PostgreSQL + Prisma ORM                      |
-| **ETL Pipeline**   | Python 3.10, PostgreSQL                      |
-| **Authentication** | JWT (stateless authentication)               |
-| **External APIs**  | Jikan API (MyAnimeList data)                 |
+| Layer                    | Current Technology                           | Future Enhancements                |
+|--------------------------|----------------------------------------------|------------------------------------|
+| **Frontend**             | Next.js 13+, TypeScript, TailwindCSS        | Chart.js (trending widgets)       |
+| **Backend API**          | Node.js, Express, RESTful APIs              | API caching, rate limiting         |
+| **Database (Primary)**   | PostgreSQL + Prisma ORM                     | Amazon RDS (production)            |
+| **ETL Pipeline**         | Python 3.10, PostgreSQL                     | -                                  |
+| **Advanced Analytics**   | -                                            | Databricks + Apache Spark          |
+| **Analytics Warehouse**  | -                                            | Amazon Redshift                    |
+| **Pipeline Orchestration** | -                                         | Apache Airflow                     |
+| **Authentication**       | JWT (stateless authentication)              | -                                  |
+| **External APIs**        | Jikan API (MyAnimeList data)                | -                                  |
+| **Cloud Infrastructure** | -                                            | AWS (ECS, RDS, Redshift, Databricks) |
+
+## 🏗️ System Architecture
+
+| Component                | Technology & Purpose                                                     |
+|--------------------------|--------------------------------------------------------------------------|
+| **Frontend Application** | **Next.js 13+ + TypeScript** - Personal anime tracking, search, statistics, trending analytics dashboard |
+| **Backend API Server**   | **Node.js + Express** - User management, authentication, list operations, search proxy, analytics API endpoints |
+| **Production Database**  | **PostgreSQL + Prisma** - User accounts, watchlists, ratings, current anime data, basic analytics results |
+| **ETL Pipeline**         | **Python 3.10** - Daily anime data extraction, transformation, loading, basic trending analytics |
+| **Analytics Engine**     | **Python CLI** - Ranking analysis, momentum calculations, data validation, manual ETL operations |
+| **External Data Source** | **Jikan API** - Real-time anime data, daily ranking updates, search results |
+
+### **Future Analytics Architecture** (Stages 2-8)
+| Component                | Technology & Purpose                                                     |
+|--------------------------|--------------------------------------------------------------------------|
+| **Advanced Analytics**   | **Databricks + Apache Spark** - Rolling window analysis, statistical computations, confidence intervals |
+| **Analytics Warehouse**  | **Amazon Redshift** - Pre-computed advanced analytics results, optimized for complex queries |
+| **Pipeline Orchestration** | **Apache Airflow** - Automated scheduling, dependency management, monitoring, data quality validation |
+| **Cloud Infrastructure** | **AWS (RDS, Redshift, ECS, Databricks)** - Production deployment, auto-scaling, multi-database connectivity |
 
 ---
 
@@ -180,7 +203,7 @@ Comprehensive ETL run tracking with status, timing, and error information.
 The pipeline enables several analytics queries:
 - **Ranking History**: Track how anime rankings change over time
 - **Biggest Climbers**: Find anime that gained the most ranks (weekly/monthly)
-- **Score Momentum**: Identify anime with increasing scores
+- **Score Momentum**: Identify anime with increasing scores (weekly/monthly)
 - **New Entries**: Detect anime entering top rankings for the first time
 
 ### Python CLI Commands
@@ -219,38 +242,110 @@ python -m pytest tests/
 
 ## 🎯 Future Stages (Planned)
 
-### **Stage 2: Cloud Warehouse Sync** ☁️
-- Sync processed data to BigQuery for advanced analytics
-- Materialized views for complex queries
+#### **Current Stage 1 Analytics (Basic ETL) - Completed**
+Our existing analytics provide immediate trending insights:
+- **Biggest Climbers Week**: `get_biggest_climbers(days=7)` - Top 5 anime with biggest rank improvements this week
+- **Biggest Climbers Month**: `get_biggest_climbers(days=30)` - Top 5 anime with biggest rank improvements this month
+- **New to Top 50**: `get_new_entries_top50()` - Anime that entered top 50 for the first time
+- **Score Surging Week**: `get_score_momentum(days=7)` - Top 5 anime with biggest score increases this week
+- **Score Surging Month**: `get_score_momentum(days=30)` - Top 5 anime with biggest score increases this month
+- **Longest Running**: `get_longest_top10_streaks()` - Anime with longest consecutive top 10 streaks
+- **Python ETL Validation**: Continue existing data quality checks in PostgreSQL
 
-### **Stage 3: Orchestration with Airflow** 🔄
-- Apache Airflow DAGs for scheduling ETL runs
-- Automated retries and failure alerts
+### **Stage 2: Advanced Time Series Analytics with Databricks** ⚡
+- **Keep Existing Python ETL**: Our current daily ETL pipeline continues as-is
+- **Add Spark Analytics Layer**: Use Databricks for computationally intensive rolling window analysis
+- **Data Source**: Spark reads from our existing PostgreSQL `DailyRankings` table
+- **Data Enhancement**: Add `genres` field to `DailyRankings` table for advanced analytics
+- **Cross-Platform Validation**: Ensure consistency between PostgreSQL basic analytics and Redshift advanced analytics
+- **Databricks Validation**: Advanced statistical validation for rolling window calculations
 
-### **Stage 4: Real-time Analytics Widget** ⚡
-- Live trending anime widget on dashboard
-- WebSocket endpoints for real-time updates
+### **Stage 3: Analytics Data Warehousing with Redshift** 📊
+- **Redshift tables** for storing Databricks advanced analytics results. Advanced analytics that add statistical context to our basic trends:
+  - `RollingMomentumAnalysis` - 30-day rolling averages with confidence intervals for trending anime
+  - `VolatilityRankings` - Identify which "biggest climbers" are stable vs volatile using rolling standard deviation
+  - `GenrePercentiles` - Show how "score surging" anime rank within their genres over time with rolling percentile rankings within genres
+  - `TrendSignificance` - Statistical significance testing of momentum trends
+  - `CorrelationMatrix` - How 7-day trends correlate with 30-day patterns
+- **Optimized for analytics queries** with proper distribution and sort keys
+- **Redshift Monitoring**: Analytics warehouse data integrity validation
 
-### **Stage 5: Data Quality & Governance** ✅
-- Great Expectations for data validation
-- Automated data quality monitoring
+### **Stage 4: Analytics API Endpoints** 📡
+- Create REST API endpoints to serve analytics data to the `/anime` page
+- **Current Analytics Endpoints (PostgreSQL)**:
+  - `GET /api/analytics/climbers?timeframe=week` - Returns `biggestClimbersWeek` data
+  - `GET /api/analytics/climbers?timeframe=month` - Returns `biggestClimbersMonth` data
+  - `GET /api/analytics/momentum?timeframe=week` - Returns `scoreSurgingWeek` data
+  - `GET /api/analytics/momentum?timeframe=month` - Returns `scoreSurgingMonth` data
+  - `GET /api/analytics/new-entries` - Returns `newToTop50` data
+  - `GET /api/analytics/streaks` - Returns `longestRunning` data
+  - `GET /api/analytics/summary` - Returns all 6 analytics via `get_trending_summary()`
+- **Enhanced Analytics Endpoints (advanced, pre-computed)**:
+  - `GET /api/analytics/rolling-momentum?window=30` - Rolling window momentum analysis
+  - `GET /api/analytics/volatility?window=14` - Rolling volatility rankings  
+  - `GET /api/analytics/genre-percentiles?genre=Action&window=30` - Genre-based percentile rankings
+  - `GET /api/analytics/trend-significance?anime_id=123&window=30` - Statistical significance testing
+  - `GET /api/analytics/trend-correlation` - Multi-timeframe trend correlations
+  - `GET /api/analytics/advanced-summary` - All 5 advanced analytics in one call
 
-### **Stage 6: Cloud Deployment** 🚀
-- Docker containers for all services
-- Terraform for AWS infrastructure
+### **Stage 5: Trending Dashboard Integration on /anime Page** 📊
+- **Location**: Top of existing `/anime` page (after Quick Discovery section)
+- **Layout**: Full-width horizontal dashboard (like Quick Discovery box), current analytics on one page,
+enhanced analytics on the other
+- **Current Analytics Widgets**: Display our 6 existing analytics functions
+  - "📈 Biggest Climbers This Week/Month" (from `biggestClimbersWeek`/`biggestClimbersMonth`)
+  - "🔥 Score Surging This Week/Month" (from `scoreSurgingWeek`/`scoreSurgingMonth`)  
+  - "⭐ New to Top 50" (from `newToTop50`)
+  - "🏆 Longest Top 10 Streaks" (from `longestRunning`)
+- **Enhanced Analytics Widgets**: Display Databricks rolling window insights
+  - "📊 Rolling Momentum Trends" (30-day rolling analysis with confidence bands)
+  - "⚡ Volatility Rankings" (stable vs volatile anime classification)
+  - "🎭 Genre Percentiles" (how anime rank within their genres over time)
+  - "📈 Trend Significance" (statistical confidence of momentum trends)
+  - "🔗 Multi-Timeframe Correlation" (how 7-day vs 30-day trends relate)
+- **Data Source**: Connect to Redshift via API endpoints for optimal performance
+- **Integration**: Seamless addition to existing `/anime` page flow
 
-### **Stage 7: Documentation & Architecture** 📚
-- Architecture diagrams and comprehensive guides
+### **Stage 6: Pipeline Orchestration with Apache Airflow** 🪁
+- **Enhanced DAG Workflow**: 
+  1. **Daily Python ETL** → PostgreSQL (basic analytics)
+  2. **Databricks Rolling Analytics** → Redshift (advanced analytics results)
+  3. **API Cache Refresh** → Update cached endpoints for both data sources
+- **Dependency Management**: Ensure Python ETL completes before Databricks analytics
+- **Daily Scheduling**: Automated runs at midnight UTC
+- **Error Handling**: Automated retries and failure alerts for each pipeline stage
+- **Monitoring**: Slack notifications for pipeline status and data quality issues
+- **Dual Data Source Management**: Coordinate PostgreSQL and Redshift endpoints
+- **Great Expectations**: Comprehensive validation rules in Airflow DAGs
+- **Data Lineage**: End-to-end tracking from Jikan API → Python ETL → PostgreSQL + Databricks → Redshift
+
+### **Stage 7: Cloud Deployment** 🚀
+- **Containerization**: Docker containers for all services
+- **Infrastructure as Code**: Terraform for AWS deployment
+- **Managed Services**: 
+  - Databricks on AWS for Spark analytics
+  - Amazon RDS for PostgreSQL (production database)
+  - Amazon Redshift for analytics warehouse
+  - Airflow on ECS for orchestration
+  - Application Load Balancer for API routing
+- **Auto-scaling**: Dynamic resource allocation based on workload
+- **Multi-Database Connectivity**: Secure connections between PostgreSQL, Databricks, and Redshift
+
+### **Stage 8: Documentation & Architecture** 📚
+- **Architecture Diagrams**: Complete data flow visualization with Mermaid.js
+- **Pipeline Documentation**: Detailed setup and operation guides
+- **Performance Metrics**: Benchmarking and optimization recommendations
 
 ---
 
 ## 📊 Current Data Flow
 
-```
-Jikan API → Python ETL → PostgreSQL → Backend API → Frontend
-    ↓           ↓            ↓            ↓           ↓
-Raw JSON → Transform → Analytics → User Data → React UI
-```
+'''
+PostgreSQL (Raw Data) → Databricks (Processing) → Redshift (Analytics Results) → API → Frontend
+       ↓                       ↓                        ↓                ↓        ↓
+   DailyRankings       Rolling Window Analysis    Advanced Analytics    REST    Dashboard
+   ProcessedAnime     Statistical Calculations    Pre-computed Results   APIs    Widgets
+'''
 
 **Architecture:**
 1. **ETL Pipeline** collects and processes anime data daily
@@ -267,12 +362,11 @@ Raw JSON → Transform → Analytics → User Data → React UI
 - ✅ Advanced search with filtering works smoothly
 - ✅ Cat companion responds to user activity
 - ✅ Personal statistics show comprehensive analysis
-- ✅ Application performs well on mobile and desktop
 
 ### ETL Pipeline (Stage 1)
 - ✅ Python ETL pipeline successfully processes Jikan API data
 - ✅ Database schema supports historical anime rankings
-- ✅ CLI interface enables manual ETL operations
+- ✅ CLI interface enables manual ETL operations for testing
 - ✅ Comprehensive logging tracks all ETL activities
 - ✅ Unit tests validate ETL transformation logic
 
