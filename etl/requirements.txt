@@ -1,0 +1,18 @@
+# Core dependencies
+psycopg2-binary==2.9.7
+python-dotenv==1.0.0
+requests==2.31.0
+
+# Testing
+pytest==7.4.0
+pytest-mock==3.11.1
+
+# Utility
+click==8.1.6
+pydantic==2.1.1
+
+# Database ORM for ETL
+sqlalchemy==2.0.21
+
+# Date handling
+python-dateutil==2.8.2

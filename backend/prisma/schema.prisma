@@ -56,6 +56,82 @@ model Anime {
   userAnime    UserAnime[]
 }
 
+// ETL Pipeline Tables (Stage 1)
+
+model RawAnimeData {
+  id          Int      @id @default(autoincrement())
+  malId       Int
+  rawJson     Json
+  sourceApi   String   @default("jikan")
+  endpoint    String   // 'top', 'search', 'seasonal'
+  ingestedAt  DateTime @default(now())
+  etlRunId    String
+
+  @@index([malId])
+  @@index([etlRunId])
+}
+
+model ProcessedAnime {
+  id           Int      @id @default(autoincrement())
+  malId        Int      @unique
+  title        String
+  titleEnglish String?
+  genres       String[]
+  score        Decimal? @db.Decimal(4,2)
+  scoredBy     Int?
+  rank         Int?
+  popularity   Int?
+  members      Int?
+  favorites    Int?
+  episodes     Int?
+  status       String?
+  season       String?
+  year         Int?
+  rating       String?
+  studios      String[]
+  imageUrl     String?
+  synopsis     String?
+  processedAt  DateTime @default(now())
+  etlRunId     String
+
+  @@index([rank])
+  @@index([popularity])
+  @@index([etlRunId])
+}
+
+model DailyRankings {
+  id           Int      @id @default(autoincrement())
+  malId        Int
+  snapshotDate DateTime @db.Date
+  rank         Int?
+  popularity   Int?
+  score        Decimal? @db.Decimal(4,2)
+  scoredBy     Int?
+  members      Int?
+  favorites    Int?
+  etlRunId     String
+
+  @@unique([malId, snapshotDate])
+  @@index([snapshotDate])
+  @@index([rank])
+}
+
+model EtlLogs {
+  id              Int       @id @default(autoincrement())
+  runId           String    @unique
+  startTime       DateTime
+  endTime         DateTime?
+  status          String    // SUCCESS, FAILED, RUNNING
+  pipelineStep    String    // EXTRACT, TRANSFORM, LOAD, COMPLETE
+  rowsProcessed   Int?
+  errorMessage    String?
+  apiRequestCount Int?
+  createdAt       DateTime  @default(now())
+
+  @@index([status])
+  @@index([startTime])
+}
+
 enum AnimeStatus {
   WATCHING
   COMPLETED
