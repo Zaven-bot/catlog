@@ -1,120 +1,101 @@
-# 🐾 CatLog – Anime Tracking with Data Engineering Pipeline
+# 🐾 CatLog – Anime Tracking Application
+## Pre-Stage: Core Application (Current Implementation)
 
-CatLog is a full-stack anime tracking application that combines modern web development with a robust data engineering pipeline. Built as a portfolio project showcasing both frontend development skills and data engineering capabilities using real anime data from the Jikan API.
-
-## 🎯 Purpose
-
-CatLog demonstrates two key technical areas:
-- **Frontend Development**: React/Next.js application for anime discovery and tracking
-- **Data Engineering**: Production-ready ETL pipeline for processing anime data at scale
-
-This project showcases practical skills in full-stack development, data pipeline architecture, and modern DevOps practices.
+CatLog is a full-stack anime tracking application built with modern web technologies. This README documents the **current baseline implementation** and the planned **7-stage data engineering transformation** that will be added incrementally.
 
 ---
 
-## 🛠️ Tech Stack
+## 🎯 Project Structure
+
+This project has **two distinct phases**:
+
+### **PHASE 1: Pre-Stage (CURRENT)** ✅
+A complete, working anime tracking web application with all core user features.
+
+### **PHASE 2: Data Engineering Stages 1-7 (PLANNED)**  
+Will incrementally add production data engineering infrastructure **without changing user-facing features**.
+
+---
+
+## 🛠️ Current Tech Stack (Pre-Stage)
 
 | Layer              | Technology                                    |
 |--------------------|-----------------------------------------------|
-| **Frontend**       | Next.js, TypeScript, TailwindCSS             |
+| **Frontend**       | Next.js 13+, TypeScript, TailwindCSS         |
 | **Backend API**    | Node.js, Express, RESTful APIs               |
 | **Database**       | PostgreSQL + Prisma ORM                      |
 | **Authentication** | JWT (stateless authentication)               |
-| **Data Pipeline**  | Python ETL with Jikan API integration        |
-| **External APIs**  | Jikan (MyAnimeList data)                     |
-| **Testing**        | Jest (unit), Pytest (ETL)                    |
+| **External APIs**  | Jikan API (MyAnimeList data)                 |
 | **Deployment**     | Vercel (frontend), Render (backend)          |
 
 ---
 
-## 🎯 Current Features
+## ✅ CURRENT FEATURES (Pre-Stage Implementation)
 
 ### 🐱 Virtual Cat Companion
-- Interactive cat that reacts to user activity
-- Different moods and animations based on anime tracking behavior
-- Quick action suggestions based on cat's current mood
+- **Interactive mood system**: Cat reacts to user activity (happy, bored, excited, neutral)
+- **Activity-based responses**: Different animations based on anime tracking behavior
+- **Smart suggestions**: Cat suggests actions based on current mood
+- **Mood persistence**: Remembers activity levels across sessions
 
-### 📺 Anime Discovery & Tracking
-- Browse trending, seasonal, and all-time favorite anime
-- Detailed anime information pages with ratings, genres, and synopsis
-- Personal anime list management with status tracking:
+### 📺 Core Anime Tracking
+- **Personal anime lists** with 5 status categories:
   - Currently Watching
-  - Completed
+  - Completed  
   - Plan to Watch
   - On Hold
   - Dropped
-- Personal ratings and notes for each anime
+- **Personal ratings** (1-10 scale) and notes for each anime
+- **Quick status updates** from anime cards with visual feedback
+- **Rate & Review modal** (with fixed z-index layering)
+- **List management** from dedicated `/my-list` page
 
-### 🔍 Search & Discovery
-- Real-time anime search using Jikan API
-- Advanced filtering and pagination
-- Recently searched anime tracking
+### 🔍 Advanced Search & Discovery
+- **Real-time search** using Jikan API with rate limiting
+- **Advanced filtering** by:
+  - Multiple genres (AND logic)
+  - Year ranges (start/end)
+  - Status (airing, completed, upcoming) 
+  - Score ranges (min/max ratings)
+- **Genre-only browsing** without search terms
+- **Pagination** with "Load More" functionality
+- **Recent searches** tracking and quick access
+- **Search cooldown** to prevent API abuse
 
-### 📊 Statistics Dashboard
-- Personal anime statistics and viewing habits
-- Interactive charts showing:
-  - Status breakdown (watching, completed, etc.)
-  - Top genres from your list
-  - Personal rating distribution
-  - Viewing activity over time
+### 📊 Personal Statistics Dashboard
+- **Comprehensive stats** calculated from user data:
+  - Total anime counts by status
+  - Episodes watched and estimated watch time
+  - Top genres from user's list
+  - Studio preferences analysis
+  - Monthly activity tracking
+  - Completion and drop rates
+- **Interactive charts** using Chart.js:
+  - Status breakdown (bar chart)
+  - Genre distribution (bar chart) 
+  - Personal rating distribution (doughnut chart)
+  - Activity over time (line chart)
 
 ### 🔐 User Management
-- JWT-based authentication system
-- User registration and login
-- Protected routes and secure API access
-- Personal profile management
+- **JWT-based authentication** with secure token handling
+- **Registration and login** with form validation
+- **Protected routes** throughout application
+- **Persistent sessions** with automatic token refresh
+- **User profile** management
+
+### 📱 User Experience
+- **Responsive design** optimized for mobile and desktop
+- **Fast page navigation** with Next.js App Router
+- **Optimistic UI updates** for better perceived performance
+- **Error handling** with user-friendly messages
+- **Loading states** throughout the application
 
 ---
 
-## 🏗️ Data Engineering Pipeline
-
-### ETL Pipeline (IMPLEMENTED)
-A production-ready ETL pipeline that processes anime data from the Jikan API:
-
-**Features:**
-- **Extract**: Pulls trending and seasonal anime data from Jikan API with rate limiting
-- **Transform**: Converts raw JSON data into structured, validated format
-- **Load**: Stores both raw and processed data in PostgreSQL
-- **Logging**: Comprehensive ETL run tracking and error handling
-- **CLI Interface**: Easy-to-use command-line tools
-- **Unit Tests**: Full test coverage for all ETL functions
-
-**Database Schema:**
-- `RawAnimeData`: Stores complete JSON responses from Jikan API
-- `ProcessedAnime`: Structured, transformed anime data ready for analysis
-- `EtlLogs`: Comprehensive logging of all ETL pipeline runs
-
-**Usage:**
-```bash
-# Run ETL pipeline
-cd etl
-python pipeline.py run
-
-# Extract seasonal anime
-python pipeline.py run --source seasonal --year 2024 --season winter
-
-# View recent ETL logs
-python pipeline.py logs
-
-# Test database connection
-python pipeline.py test-connection
-```
-
-**Monitoring & Error Handling:**
-- Unique run IDs for tracking
-- Start/end timestamps and duration tracking
-- Success/failure status logging
-- Row count processing metrics
-- Detailed error messages and stack traces
-- Rate limiting and retry logic for API calls
-
----
-
-## 🚀 Getting Started
+## 🚀 Getting Started (Pre-Stage)
 
 ### Prerequisites
 - Node.js 18+
-- Python 3.9+
 - PostgreSQL database
 
 ### 1. Clone and Install
@@ -126,13 +107,9 @@ cd catlog
 cd backend
 npm install
 
-# Install frontend dependencies
+# Install frontend dependencies  
 cd ../frontend
 npm install
-
-# Install ETL dependencies
-cd ../etl
-pip install -r requirements.txt
 ```
 
 ### 2. Database Setup
@@ -146,27 +123,13 @@ cd backend
 npx prisma migrate dev
 ```
 
-### 3. ETL Pipeline Setup
-```bash
-# Configure ETL environment
-cd etl
-cp .env.example .env
-# Edit .env with your database credentials
-
-# Test ETL connection
-python pipeline.py test-connection
-
-# Run initial data load
-python pipeline.py run --max-pages 5
-```
-
-### 4. Start Development Servers
+### 3. Start Development Servers
 ```bash
 # Start backend (terminal 1)
 cd backend
 npm run dev
 
-# Start frontend (terminal 2)
+# Start frontend (terminal 2) 
 cd frontend
 npm run dev
 ```
@@ -175,7 +138,7 @@ Visit `http://localhost:3000` to see the application.
 
 ---
 
-## 📁 Project Structure
+## 📁 Current Project Structure (Pre-Stage)
 
 ```
 catlog/
@@ -185,7 +148,7 @@ catlog/
 │   │   ├── controllers/     # API route handlers
 │   │   ├── middleware/      # Auth, CORS, error handling
 │   │   ├── routes/         # API route definitions
-│   │   ├── services/       # External API integrations
+│   │   ├── services/       # Jikan API integration
 │   │   └── utils/          # JWT, validation utilities
 │   └── prisma/             # Database schema & migrations
 ├── frontend/               # Next.js React application
@@ -193,139 +156,136 @@ catlog/
 │       ├── app/            # Next.js 13+ app router pages
 │       ├── components/     # Reusable React components
 │       ├── hooks/          # Custom React hooks
-│       └── stores/         # State management
-├── etl/                    # Python ETL pipeline
-│   ├── config.py           # Configuration management
-│   ├── database.py         # Database operations
-│   ├── extractor.py        # Jikan API data extraction
-│   ├── transformer.py      # Data transformation
-│   ├── pipeline.py         # Main ETL orchestrator & CLI
-│   └── tests/              # ETL unit tests
+│       └── stores/         # State management (Zustand)
 └── shared/                 # Shared TypeScript types
 ```
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing (Pre-Stage)
 
-### Backend API Tests
+Currently implements basic testing framework:
+
 ```bash
-cd backend
+# Backend API tests
+cd backend  
+npm test
+
+# Frontend component tests (planned)
+cd frontend
 npm test
 ```
 
-### ETL Pipeline Tests
-```bash
-cd etl
-python -m pytest tests/ -v
-```
-
 ---
 
-## 📊 Data Flow Architecture
+## 📊 Current Data Flow (Pre-Stage)
 
 ```
-Jikan API → ETL Pipeline → PostgreSQL → Backend API → Frontend
-    ↓            ↓             ↓           ↓           ↓
-Raw JSON → Transformation → Structured → REST API → React UI
-   +              +            Data        +          +
-Validation → Error Handling → Indexing → Caching → State Mgmt
+Jikan API → Backend API → PostgreSQL → Frontend
+    ↓           ↓            ↓           ↓
+Raw JSON → Transform → User Data → React UI
 ```
 
-**ETL Pipeline Flow:**
-1. **Extract**: Fetch anime data from Jikan API with rate limiting
-2. **Transform**: Clean, validate, and structure raw JSON data
-3. **Load**: Store in PostgreSQL with comprehensive logging
-4. **Monitor**: Track pipeline runs, errors, and performance metrics
+**Simple Architecture:**
+1. **Frontend** makes requests to Backend API
+2. **Backend** fetches data from Jikan API when needed
+3. **Database** stores user accounts, anime lists, and ratings
+4. **No data pipeline** - everything is request/response based
 
 ---
 
-## 🎯 Development Roadmap
+## 🎯 DATA ENGINEERING TRANSFORMATION ROADMAP
 
-### Completed ✅
-- Core anime tracking functionality
-- User authentication and management
-- Real-time anime search and discovery
-- Personal statistics dashboard
-- Virtual cat companion with mood system
-- Production-ready ETL pipeline
-- Comprehensive error handling and logging
-- Unit test coverage for ETL functions
+The following 7 stages will add production data engineering infrastructure **without changing any user-facing features**:
 
-### In Progress / Future Enhancements
-- Cloud data warehouse integration (BigQuery)
-- Apache Airflow orchestration
-- Real-time streaming data updates
-- Data quality validation with Great Expectations
-- Containerization and cloud deployment
-- CI/CD pipeline automation
+### **STAGE 1: ETL Pipeline** 📊
+**What it adds:** Automated data collection and processing
+- Python ETL pipeline for batch processing anime data from Jikan API
+- Database tables: `RawAnimeData`, `ProcessedAnime`, `EtlLogs`
+- CLI interface for running ETL jobs manually
+- Comprehensive logging and error handling
+- Unit tests for all ETL functions
 
----
+**User impact:** None (runs in background)
 
-## 🚀 Deployment
+### **STAGE 2: Cloud Warehouse Sync** ☁️
+**What it adds:** Data warehouse capabilities
+- Sync processed data to BigQuery for analytics
+- Materialized views for complex queries
+- Configuration flags for cloud sync
 
-### Frontend
-- Deployed on [Vercel](https://vercel.com/)
-- Automatic deployments from main branch
-- Environment variables configured for production API endpoints
+**User impact:** None (backend infrastructure)
 
-### Backend
-- Deployed on [Render](https://render.com/)
-- PostgreSQL database on [Supabase](https://supabase.com/)
-- JWT-based stateless authentication
-- CORS configured for production frontend
+### **STAGE 3: Orchestration with Airflow** 🔄
+**What it adds:** Workflow automation
+- Apache Airflow DAGs for scheduling ETL runs
+- Automated retries and failure alerts
+- Configurable data refresh schedules
 
-### ETL Pipeline
-- Can be scheduled via cron for regular data updates
-- Supports both manual and automated execution
-- Production-ready error handling and logging
+**User impact:** None (background automation)
 
----
+### **STAGE 4: Streaming Data Simulation** ⚡
+**What it adds:** Real-time updates
+- Kafka streaming for live popularity updates
+- WebSocket endpoints for real-time data
+- **ONLY user-visible change:** Small live popularity widget on dashboard
 
-## 💡 Technical Highlights
+**User impact:** Adds 1 small widget showing live anime popularity in the home page--inviting the user to look into them. This would send them to the Login home page if they're not logged in yet.
 
-### Data Engineering
-- **ETL Architecture**: Modular, testable pipeline design
-- **Error Handling**: Comprehensive logging and graceful failure recovery
-- **Data Quality**: Validation and transformation with detailed audit trails
-- **Scalability**: Configurable batch processing and rate limiting
-- **Monitoring**: Detailed metrics and run tracking
+### **STAGE 5: Data Quality & Governance** ✅
+**What it adds:** Data validation and monitoring
+- Great Expectations for data quality validation
+- Data documentation generation
+- ETL pipeline validation gates
 
-### Full-Stack Development
-- **Type Safety**: End-to-end TypeScript implementation
-- **State Management**: React hooks with optimistic updates
-- **API Design**: RESTful endpoints with proper error handling
-- **Database Design**: Normalized schema with proper indexing
-- **Authentication**: Secure JWT implementation with protected routes
+**User impact:** None (internal quality controls)
 
-### DevOps & Quality
-- **Testing**: Unit tests for both backend and ETL components
-- **Documentation**: Comprehensive README and inline code documentation
-- **Configuration**: Environment-based configuration management
-- **Logging**: Structured logging with timestamps and error tracking
+### **STAGE 6: Cloud Deployment** 🚀
+**What it adds:** Production infrastructure
+- Docker containers for all services
+- Terraform for AWS infrastructure
+- CI/CD pipelines with GitHub Actions
+
+**User impact:** None (deployment improvements)
+
+### **STAGE 7: Documentation & Architecture** 📚
+**What it adds:** Comprehensive documentation
+- Architecture diagrams (Mermaid.js)
+- Complete setup guides
+- Example screenshots and workflows
+
+**User impact:** None (documentation only)
 
 ---
 
-## 📈 Success Metrics
+## 💡 Why This Approach?
+
+**Incremental Development Benefits:**
+- ✅ **Test each stage** thoroughly before moving to the next
+- ✅ **Ensure stability** - the core app always works
+- ✅ **Clear boundaries** - each stage has specific, well-defined goals
+- ✅ **Rollback safety** - can revert any stage without breaking the app
+- ✅ **Learning progression** - master each data engineering concept step by step
+
+---
+
+## 📈 Success Metrics (Pre-Stage)
 
 - ✅ Users can register, login, and manage their anime lists
-- ✅ Search returns real anime data from Jikan API
+- ✅ Search returns real anime data from Jikan API with advanced filtering
 - ✅ Cat companion responds meaningfully to user activity
-- ✅ Statistics show real user data trends
-- ✅ ETL pipeline processes data reliably with comprehensive logging
+- ✅ Statistics show comprehensive user data analysis
 - ✅ Application is deployed and accessible online
 - ✅ Performance is smooth on mobile and desktop
+- ✅ Rate & Review modal appears correctly above other content
 
-**Total Development Time**: ~80 hours across frontend, backend, and data pipeline
+**Total Development Time (Pre-Stage)**: ~60 hours
 
 ---
 
 ## 🤝 Contributing
 
-This is a portfolio project, but feedback and suggestions are welcome! Please feel free to:
-- Report bugs or issues
-- Suggest new features
-- Provide feedback on code quality or architecture
+This is a portfolio project showcasing incremental data engineering development. Each stage will be thoroughly tested before proceeding to the next.
 
 ---
 
