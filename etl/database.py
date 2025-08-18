@@ -153,8 +153,8 @@ class DatabaseManager:
                         cursor.execute("""
                             INSERT INTO "DailyRankings" (
                                 "malId", "snapshotDate", "rank", "popularity", "score", 
-                                "scoredBy", "members", "favorites", "etlRunId"
-                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                "scoredBy", "members", "favorites", "genres", "etlRunId"
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                             ON CONFLICT ("malId", "snapshotDate") DO NOTHING
                         """, (
                             ranking['malId'],
@@ -165,6 +165,7 @@ class DatabaseManager:
                             ranking.get('scoredBy'),
                             ranking.get('members'),
                             ranking.get('favorites'),
+                            ranking.get('genres', []),  # Added for Stage 2 Spark analytics
                             etl_run_id
                         ))
                         

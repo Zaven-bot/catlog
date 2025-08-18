@@ -65,7 +65,8 @@ class RankingTransformer:
             'score': self._safe_get_decimal(anime, 'score'),
             'scoredBy': self._safe_get_int(anime, 'scored_by'),
             'members': self._safe_get_int(anime, 'members'),
-            'favorites': self._safe_get_int(anime, 'favorites')
+            'favorites': self._safe_get_int(anime, 'favorites'),
+            'genres': self._extract_genres(anime)  # Added for Stage 2 Spark analytics
         }
     
     def _safe_get_string(self, data: Dict[str, Any], key: str) -> Optional[str]:

@@ -169,6 +169,11 @@ catlog/
 │   ├── pipeline.py        # Main ETL orchestrator & CLI
 │   ├── transformer.py     # Data transformation
 │   └── tests/             # ETL unit tests
+├── databricks/             # Stage 2: Spark Analytics (NEW)
+│   ├── config/            # Connection & cluster configuration
+│   ├── notebooks/         # Spark analytics notebooks
+│   ├── schemas/           # Analytics table definitions
+│   └── validation/        # Cross-validation scripts
 └── shared/                # Shared TypeScript types
 ```
 

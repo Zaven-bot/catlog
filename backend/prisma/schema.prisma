@@ -109,11 +109,14 @@ model DailyRankings {
   scoredBy     Int?
   members      Int?
   favorites    Int?
+  genres       String[] // Added for Stage 2 Spark analytics
   etlRunId     String
 
   @@unique([malId, snapshotDate])
   @@index([snapshotDate])
   @@index([rank])
+  @@index([malId]) // Added for Spark performance
+  @@index([malId, snapshotDate]) // Added for time-series analytics
 }
 
 model EtlLogs {
