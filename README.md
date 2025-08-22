@@ -257,7 +257,7 @@ Our existing analytics provide immediate trending insights:
 - **Longest Running**: `get_longest_top10_streaks()` - Anime with longest consecutive top 10 streaks
 - **Python ETL Validation**: Continue existing data quality checks in PostgreSQL
 
-### **Stage 2: Advanced Time Series Analytics with Databricks** ⚡
+### **Stage 2: Advanced Time Series Analytics with Databricks** ⚡ - **IN PROGRESS**
 - **Keep Existing Python ETL**: Our current daily ETL pipeline continues as-is
 - **Add Spark Analytics Layer**: Use Databricks for computationally intensive rolling window analysis
 - **Data Source**: Spark reads from our existing PostgreSQL `DailyRankings` table
@@ -265,81 +265,57 @@ Our existing analytics provide immediate trending insights:
 - **Cross-Platform Validation**: Ensure consistency between PostgreSQL basic analytics and Redshift advanced analytics
 - **Databricks Validation**: Advanced statistical validation for rolling window calculations
 
-### **Stage 3: Analytics Data Warehousing with Redshift** 📊
-- **Redshift tables** for storing Databricks advanced analytics results. Advanced analytics that add statistical context to our basic trends:
-  - `RollingMomentumAnalysis` - 30-day rolling averages with confidence intervals for trending anime
-  - `VolatilityRankings` - Identify which "biggest climbers" are stable vs volatile using rolling standard deviation
-  - `GenrePercentiles` - Show how "score surging" anime rank within their genres over time with rolling percentile rankings within genres
-  - `TrendSignificance` - Statistical significance testing of momentum trends
-  - `CorrelationMatrix` - How 7-day trends correlate with 30-day patterns
-- **Optimized for analytics queries** with proper distribution and sort keys
-- **Redshift Monitoring**: Analytics warehouse data integrity validation
+#### **Stage 2 Progress - Databricks Infrastructure Setup** ✅
+**Infrastructure Foundation (Completed)**:
+- ✅ **Databricks Connection Layer**: Created `databricks/config/connection.py` with `DatabaseConnection` and `DatabricksConfig` classes
+- ✅ **Environment Configuration**: Secure `.env` file management for PostgreSQL credentials
+- ✅ **Spark Session Management**: Automatic Spark session creation with PostgreSQL JDBC drivers
+- ✅ **Data Reading Methods**: `read_daily_rankings()` method successfully reads from PostgreSQL via Spark
+- ✅ **Connection Testing**: Both standalone Python script and Databricks notebook testing capabilities
+- ✅ **Schema Validation**: All PostgreSQL column names (camelCase) properly handled with quoted identifiers
 
-### **Stage 4: Analytics API Endpoints** 📡
-- Create REST API endpoints to serve analytics data to the `/anime` page
-- **Current Analytics Endpoints (PostgreSQL)**:
-  - `GET /api/analytics/climbers?timeframe=week` - Returns `biggestClimbersWeek` data
-  - `GET /api/analytics/climbers?timeframe=month` - Returns `biggestClimbersMonth` data
-  - `GET /api/analytics/momentum?timeframe=week` - Returns `scoreSurgingWeek` data
-  - `GET /api/analytics/momentum?timeframe=month` - Returns `scoreSurgingMonth` data
-  - `GET /api/analytics/new-entries` - Returns `newToTop50` data
-  - `GET /api/analytics/streaks` - Returns `longestRunning` data
-  - `GET /api/analytics/summary` - Returns all 6 analytics via `get_trending_summary()`
-- **Enhanced Analytics Endpoints (advanced, pre-computed)**:
-  - `GET /api/analytics/rolling-momentum?window=30` - Rolling window momentum analysis
-  - `GET /api/analytics/volatility?window=14` - Rolling volatility rankings  
-  - `GET /api/analytics/genre-percentiles?genre=Action&window=30` - Genre-based percentile rankings
-  - `GET /api/analytics/trend-significance?anime_id=123&window=30` - Statistical significance testing
-  - `GET /api/analytics/trend-correlation` - Multi-timeframe trend correlations
-  - `GET /api/analytics/advanced-summary` - All 5 advanced analytics in one call
+**Current Capabilities**:
+- ✅ **PostgreSQL → Spark Integration**: Successfully reads 50 records from `DailyRankings` table
+- ✅ **Data Validation**: Confirms proper data structure (malId, snapshotDate, rank, score, genres, etc.)
+- ✅ **Error Handling**: Comprehensive logging and connection error management
+- ✅ **Self-Testing Scripts**: `python connection.py` runs full connection validation locally
 
-### **Stage 5: Trending Dashboard Integration on /anime Page** 📊
-- **Location**: Top of existing `/anime` page (after Quick Discovery section)
-- **Layout**: Full-width horizontal dashboard (like Quick Discovery box), current analytics on one page,
-enhanced analytics on the other
-- **Current Analytics Widgets**: Display our 6 existing analytics functions
-  - "📈 Biggest Climbers This Week/Month" (from `biggestClimbersWeek`/`biggestClimbersMonth`)
-  - "🔥 Score Surging This Week/Month" (from `scoreSurgingWeek`/`scoreSurgingMonth`)  
-  - "⭐ New to Top 50" (from `newToTop50`)
-  - "🏆 Longest Top 10 Streaks" (from `longestRunning`)
-- **Enhanced Analytics Widgets**: Display Databricks rolling window insights
-  - "📊 Rolling Momentum Trends" (30-day rolling analysis with confidence bands)
-  - "⚡ Volatility Rankings" (stable vs volatile anime classification)
-  - "🎭 Genre Percentiles" (how anime rank within their genres over time)
-  - "📈 Trend Significance" (statistical confidence of momentum trends)
-  - "🔗 Multi-Timeframe Correlation" (how 7-day vs 30-day trends relate)
-- **Data Source**: Connect to Redshift via API endpoints for optimal performance
-- **Integration**: Seamless addition to existing `/anime` page flow
+**Files Created**:
+```
+databricks/
+├── config/
+│   ├── connection.py          # Core connection library with self-testing
+│   └── .env                   # Secure environment variables
+├── notebooks/
+│   └── 00_connection_test.py  # Databricks notebook format testing
+└── test_connection_simple.py  # Standalone connection test script
+```
 
-### **Stage 6: Pipeline Orchestration with Apache Airflow** 🪁
-- **Enhanced DAG Workflow**: 
-  1. **Daily Python ETL** → PostgreSQL (basic analytics)
-  2. **Databricks Rolling Analytics** → Redshift (advanced analytics results)
-  3. **API Cache Refresh** → Update cached endpoints for both data sources
-- **Dependency Management**: Ensure Python ETL completes before Databricks analytics
-- **Daily Scheduling**: Automated runs at midnight UTC
-- **Error Handling**: Automated retries and failure alerts for each pipeline stage
-- **Monitoring**: Slack notifications for pipeline status and data quality issues
-- **Dual Data Source Management**: Coordinate PostgreSQL and Redshift endpoints
-- **Great Expectations**: Comprehensive validation rules in Airflow DAGs
-- **Data Lineage**: End-to-end tracking from Jikan API → Python ETL → PostgreSQL + Databricks → Redshift
+**Technical Implementation**:
+- **Database Connection**: PostgreSQL JDBC via Spark with proper credential management
+- **Column Handling**: Proper PostgreSQL quoted identifiers for camelCase columns (`"malId"`, `"snapshotDate"`, `"scoredBy"`, `"etlRunId"`)
+- **Data Filtering**: Time-based filtering (e.g., last 7 days) with proper date handling
+- **Self-Testing Capability**: `if __name__ == "__main__"` pattern for direct script execution
+- **Databricks Compatibility**: Notebook format with `# MAGIC` commands for Databricks UI
 
-### **Stage 7: Cloud Deployment** 🚀
-- **Containerization**: Docker containers for all services
-- **Infrastructure as Code**: Terraform for AWS deployment
-- **Managed Services**: 
-  - Databricks on AWS for Spark analytics
-  - Amazon RDS for PostgreSQL (production database)
-  - Amazon Redshift for analytics warehouse
-  - Airflow on ECS for orchestration
-  - Application Load Balancer for API routing
-- **Auto-scaling**: Dynamic resource allocation based on workload
-- **Multi-Database Connectivity**: Secure connections between PostgreSQL, Databricks, and Redshift
+**Next Stage 2 Tasks**:
+- 🔄 **Analytics Table Creation**: Create 5 new analytics tables in PostgreSQL schema
+- 🔄 **Rolling Window Analytics**: Implement Spark jobs for momentum, volatility, and genre analysis
+- 🔄 **Data Writing Methods**: Add `write_analytics_results()` to connection layer
+- 🔄 **Validation Scripts**: Cross-validation between PostgreSQL and Spark calculations
 
-### **Stage 8: Documentation & Architecture** 📚
-- **Architecture Diagrams**: Complete data flow visualization with Mermaid.js
-- **Pipeline Documentation**: Detailed setup and operation guides
-- **Performance Metrics**: Benchmarking and optimization recommendations
+New Directories / Files Created:
+- `databricks/config/connection.py`: Core connection library providing `DatabaseConnection` and `DatabricksConfig` classes. Centralizes all database configuration and provides clean methods for Spark → PostgreSQL connectivity and analytics settings.
+- `databricks/config/.env`: Secure environment variables for PostgreSQL credentials, properly loaded by connection layer.
+- `databricks/notebooks/00_connection_test.py`: Databricks notebook format for interactive connection testing in Databricks UI with proper `# MAGIC` command structure.
+
+**Connection Test Results**:
+```bash
+✅ Spark connection successful
+✅ PostgreSQL connection successful - found 50 records in DailyRankings  
+✅ Spark → PostgreSQL connection successful - read 50 records
+Overall Connection Status: ✅ SUCCESS
+```
 
 ---
 

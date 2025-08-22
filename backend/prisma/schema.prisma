@@ -102,6 +102,7 @@ model ProcessedAnime {
 model DailyRankings {
   id           Int      @id @default(autoincrement())
   malId        Int
+  title        String?  @db.VarChar(255) // New column added
   snapshotDate DateTime @db.Date
   rank         Int?
   popularity   Int?
