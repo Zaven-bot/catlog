@@ -140,10 +140,6 @@ class DatabaseManager:
                 existing_records = cursor.fetchone()[0]
                 if existing_records > 0:
                     logger.warning(f"Found {existing_records} existing records for {snapshot_date}. Historical data should not be overwritten!")
-                    # Option 1: Fail the ETL run (recommended for production)
-                    # raise Exception(f"Cannot overwrite historical data for {snapshot_date}")
-                    
-                    # Option 2: Skip insertion (for development/testing)
                     logger.warning("Skipping insertion to preserve historical data integrity")
                     return 0
                 
@@ -152,21 +148,22 @@ class DatabaseManager:
                     try:
                         cursor.execute("""
                             INSERT INTO "DailyRankings" (
-                                "malId", "snapshotDate", "rank", "popularity", "score", 
+                                "malId", "title", "snapshotDate", "rank", "popularity", "score", 
                                 "scoredBy", "members", "favorites", "genres", "etlRunId"
-                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                             ON CONFLICT ("malId", "snapshotDate") DO NOTHING
                         """, (
-                            ranking['malId'],
-                            snapshot_date,
-                            ranking.get('rank'),
-                            ranking.get('popularity'),
-                            ranking.get('score'),
-                            ranking.get('scoredBy'),
-                            ranking.get('members'),
-                            ranking.get('favorites'),
-                            ranking.get('genres', []),  # Added for Stage 2 Spark analytics
-                            etl_run_id
+                            ranking['malId'],           # ← malId
+                            ranking.get('title'),       # ← title  
+                            snapshot_date,              # ← snapshotDate
+                            ranking.get('rank'),        # ← rank
+                            ranking.get('popularity'),  # ← popularity
+                            ranking.get('score'),       # ← score
+                            ranking.get('scoredBy'),    # ← scoredBy
+                            ranking.get('members'),     # ← members
+                            ranking.get('favorites'),   # ← favorites
+                            ranking.get('genres', []),  # ← genres
+                            etl_run_id                  # ← etlRunId
                         ))
                         
                         # Check if the row was actually inserted

@@ -60,6 +60,7 @@ class RankingTransformer:
         """Transform raw anime data for DailyRankings table"""
         return {
             'malId': anime.get('mal_id'),
+            'title': anime.get('title', '').strip(),
             'rank': self._safe_get_int(anime, 'rank'),
             'popularity': self._safe_get_int(anime, 'popularity'),
             'score': self._safe_get_decimal(anime, 'score'),
