@@ -15,7 +15,7 @@ import {
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import { useUserAnimeList } from '../hooks/useUserAnimeList';
-import { UserAnime, AnimeStatus } from '../../../shared/types';
+import { UserAnime, AnimeStatus } from '@shared/types';
 
 // Register Chart.js components
 ChartJS.register(

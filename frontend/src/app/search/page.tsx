@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAnime } from '../../hooks/useAnime';
 import { useAuth } from '../../hooks/useAuth';
@@ -868,4 +868,10 @@ const SearchPage = () => {
   );
 };
 
-export default SearchPage;
+const SearchPageWrapper = () => (
+  <Suspense fallback={<div>Loading search...</div>}>
+    <SearchPage />
+  </Suspense>
+);
+
+export default SearchPageWrapper;

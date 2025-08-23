@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useCat } from '../hooks/useCat';
 import { useUserAnimeList} from '../hooks/useUserAnimeList';
 import { useAuth } from '../hooks/useAuth';
-import { AnimeStatus, UserAnime } from '../../../shared/types';
+import { AnimeStatus, UserAnime } from '@shared/types';
 import EditRatingModal from './EditRatingModal';
 
 interface Anime {

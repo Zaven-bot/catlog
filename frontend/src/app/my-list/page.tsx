@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserAnimeList } from '../../hooks/useUserAnimeList';
 import { useAuth } from '../../hooks/useAuth';
-import { AnimeStatus } from '../../../../shared/types';
+import { AnimeStatus } from '@shared/types';
 import AnimeCard from '../../components/AnimeCard';
 
 const statusOptions: { value: AnimeStatus | 'ALL'; label: string; color: string }[] = [

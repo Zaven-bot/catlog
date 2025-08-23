@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import StatsChart from '../../components/StatsChart';
 import VirtualCat from '../../components/VirtualCat';
 import EditRatingModal from '../../components/EditRatingModal';
-import { UserAnime } from '../../../../shared/types';
+import { UserAnime } from '@shared/types';
 
 const DashboardPage = () => {
     const { user, loading: authLoading } = useAuth();

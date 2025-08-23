@@ -1,6 +1,27 @@
-version: '3.8'
-
 services:
+  # Frontend Next.js App
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile.fast
+      args:
+        NEXT_PUBLIC_API_URL: http://backend:3001/api
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://backend:3001/api
+    depends_on:
+      - backend
+    networks:
+      - catlog-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # Backend API
   backend:
     build:
@@ -23,30 +44,12 @@ services:
       - catlog-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  # Frontend Next.js App
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:3001/api
-    depends_on:
-      - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-    networks:
-      - catlog-network
-    restart: unless-stopped
+
 
   # ETL Pipeline Worker
   etl:

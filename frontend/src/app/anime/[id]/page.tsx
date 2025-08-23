@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { useUserAnimeList } from '../../../hooks/useUserAnimeList';
-import { AnimeStatus } from '../../../../../shared/types';
+import { AnimeStatus } from '@shared/types';
 
 
 interface Anime {

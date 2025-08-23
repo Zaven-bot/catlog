@@ -13,9 +13,10 @@ const app = express();
 // CORS configuration
 const corsOptions = {
   origin: [
-    'http://localhost:3000',
-    'http://localhost:3002', // Add support for the current frontend port
-    'http://localhost:3001'
+    'http://localhost:3000',        // Local development
+    'http://localhost:3002',        // Alternative local port
+    'http://localhost:3001',        // Backend self-reference
+    'http://frontend:3000'          // Docker container communication
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
