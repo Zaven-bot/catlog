@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { AnimeStatus } from '@shared/types';
+// Import from Prisma generated types instead
+import { AnimeStatus } from '@prisma/client';
 
 import { JikanService } from '../services/jikanService';
 

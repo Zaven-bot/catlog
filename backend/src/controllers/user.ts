@@ -1,12 +1,23 @@
 import { Request, Response } from 'express';
-import { User } from '../../prisma/schema'; // Adjust the import based on your actual User model location
-import { prisma } from '../../utils/jwt'; // Adjust the import based on your actual prisma client location
+import { prisma } from '../../config/database';
 
 export const getUserProfile = async (req: Request, res: Response) => {
     try {
-        const userId = req.user.id; // Assuming user ID is stored in the request after authentication
+        const userId = req.user?.id; // Using optional chaining
+        
+        if (!userId) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+        
         const user = await prisma.user.findUnique({
             where: { id: userId },
+            select: {
+                id: true,
+                username: true,
+                email: true,
+                createdAt: true,
+                updatedAt: true
+            }
         });
 
         if (!user) {
@@ -21,12 +32,23 @@ export const getUserProfile = async (req: Request, res: Response) => {
 
 export const updateUserProfile = async (req: Request, res: Response) => {
     try {
-        const userId = req.user.id; // Assuming user ID is stored in the request after authentication
-        const { name, email } = req.body;
+        const userId = req.user?.id; // Using optional chaining
+        
+        if (!userId) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+        
+        const { username, email } = req.body; // Changed from 'name' to 'username' to match schema
 
         const updatedUser = await prisma.user.update({
             where: { id: userId },
-            data: { name, email },
+            data: { username, email },
+            select: {
+                id: true,
+                username: true,
+                email: true,
+                updatedAt: true
+            }
         });
 
         res.json(updatedUser);

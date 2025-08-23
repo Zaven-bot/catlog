@@ -4,7 +4,7 @@
   "description": "Backend for CatLog, your anime companion with a virtual cat twist.",
   "main": "src/server.ts",
   "scripts": {
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "dev": "ts-node src/server.ts",
     "build": "tsc",
     "migrate": "prisma migrate dev",

@@ -5,6 +5,7 @@ import { authRoutes } from './routes/auth';
 import { animeRoutes } from './routes/anime';
 import { userRoutes } from './routes/user';
 import { userAnimeRoutes } from './routes/userAnimeList';
+import healthRoutes from './routes/health';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -25,12 +26,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(json());
 
-// Health check route
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'CatLog API is running' });
-});
-
 // Routes
+app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/anime', animeRoutes);
 app.use('/api/user', userRoutes);
