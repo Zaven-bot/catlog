@@ -26,19 +26,19 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Change ownership
-RUN chown -R catlog:nodejs /app
+# While still root (has all permissions):
+RUN chown -R catlog:nodejs /app    # Give ownership to catlog
 
 # Switch to non-root user
 USER catlog
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:${PORT:-3001}/api/health/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+  CMD node -e "require('http').get('http://localhost:${PORT:-3001}/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Expose port
 EXPOSE 3001
 
-# Use dumb-init to handle signals properly
+# Use startup script instead of direct npm start
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["npm", "start"]
+CMD ["./scripts/start.sh"]
