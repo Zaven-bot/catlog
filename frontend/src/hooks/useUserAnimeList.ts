@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { UserAnime, AnimeStatus } from '@/types/api'; // Updated import
 import { useAuth } from './useAuth';
-import { AnimeStatus, UserAnime } from '@shared/types';
 
 interface UseUserAnimeListReturn {
   userAnimeList: UserAnime[];

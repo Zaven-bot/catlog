@@ -10,9 +10,6 @@ RUN apk add --no-cache dumb-init curl
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
-# Copy shared types that frontend depends on
-COPY shared ./shared
-
 # Copy package files first
 COPY frontend/package*.json ./
 

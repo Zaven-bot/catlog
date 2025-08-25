@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserAnime } from '@shared/types';
+import { UserAnime } from '@/types/api';
 
 interface EditRatingModalProps {
     anime: any;

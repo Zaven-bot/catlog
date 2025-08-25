@@ -15,7 +15,7 @@ import {
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import { useUserAnimeList } from '../hooks/useUserAnimeList';
-import { UserAnime, AnimeStatus } from '@shared/types';
+import { UserAnime, AnimeStatus } from '@/types/api'; // Fixed import
 
 // Register Chart.js components
 ChartJS.register(
@@ -38,22 +38,42 @@ const StatsChart: React.FC = () => {
     useEffect(() => {
         const loadStats = async () => {
             const statsData = await getUserAnimeStats();
-            const completedAnime = userAnimeList.filter((anime) => anime.status === 'COMPLETED');
-            const droppedAnime = userAnimeList.filter((anime) => anime.status === 'DROPPED');
+            
+            // Filter by AnimeStatus enum values (not string literals)
+            const completedAnime = userAnimeList.filter((anime) => anime.status === AnimeStatus.COMPLETED);
+            const droppedAnime = userAnimeList.filter((anime) => anime.status === AnimeStatus.DROPPED);
+            const watchingAnime = userAnimeList.filter((anime) => anime.status === AnimeStatus.WATCHING);
+            const planToWatchAnime = userAnimeList.filter((anime) => anime.status === AnimeStatus.PLAN_TO_WATCH);
+            const onHoldAnime = userAnimeList.filter((anime) => anime.status === AnimeStatus.ON_HOLD);
+            
             const totalEpisodesWatched = completedAnime.reduce((sum, anime) => sum + (anime.anime.episodes || 0), 0);
-            const completionRate = Math.round((completedAnime.length / (completedAnime.length + droppedAnime.length + userAnimeList.filter((anime) => ['WATCHING', 'PLAN_TO_WATCH'].includes(anime.status)).length)) * 100);
+            const totalAnime = userAnimeList.length;
+            const completionRate = totalAnime > 0 ? Math.round((completedAnime.length / totalAnime) * 100) : 0;
+            
+            // Calculate total watch time (assuming 24 minutes per episode)
+            const totalMinutesWatched = totalEpisodesWatched * 24;
+            const totalHoursWatched = Math.round(totalMinutesWatched / 60);
+            const totalDaysWatched = Math.round(totalHoursWatched / 24 * 10) / 10; // 1 decimal place
 
             setStats({
                 ...statsData,
+                totalAnime,
+                completedAnime: completedAnime.length,
+                droppedAnime: droppedAnime.length,
+                watchingAnime: watchingAnime.length,
+                plannedAnime: planToWatchAnime.length,
+                onHoldAnime: onHoldAnime.length,
                 totalEpisodesWatched,
-                totalDropped: droppedAnime.length,
+                totalHoursWatched,
+                totalDaysWatched,
                 completionRate,
             });
         };
+        
         if (userAnimeList.length > 0) {
             loadStats();
         }
-    }, [userAnimeList]);
+    }, [userAnimeList, getUserAnimeStats]);
 
     if (!stats || userAnimeList.length === 0) {
         return (
@@ -68,7 +88,7 @@ const StatsChart: React.FC = () => {
         );
     }
 
-    // Status Distribution Chart
+    // Status Distribution Chart - using AnimeStatus enum
     const statusData = {
         labels: ['Plan to Watch', 'Watching', 'Completed', 'On Hold', 'Dropped'],
         datasets: [
@@ -100,21 +120,27 @@ const StatsChart: React.FC = () => {
         ],
     };
 
-    // Top Genres Chart
+    // Top Genres Chart - using proper AnimeStatus filtering
     const genresData = (() => {
         const genreCounts: Record<string, number> = {};
         userAnimeList
-            .filter((anime) => ['WATCHING', 'COMPLETED', 'PLAN_TO_WATCH'].includes(anime.status))
+            .filter((anime) => [AnimeStatus.WATCHING, AnimeStatus.COMPLETED, AnimeStatus.PLAN_TO_WATCH].includes(anime.status))
             .flatMap((anime) => anime.anime.genres)
             .forEach((genre) => {
                 genreCounts[genre] = (genreCounts[genre] || 0) + 1;
             });
+        
+        // Get top 8 genres
+        const sortedGenres = Object.entries(genreCounts)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 8);
+            
         return {
-            labels: Object.keys(genreCounts),
+            labels: sortedGenres.map(([genre]) => genre),
             datasets: [
                 {
                     label: 'Anime Count',
-                    data: Object.values(genreCounts),
+                    data: sortedGenres.map(([,count]) => count),
                     backgroundColor: [
                         'rgba(255, 99, 132, 0.8)',
                         'rgba(54, 162, 235, 0.8)',
@@ -131,7 +157,7 @@ const StatsChart: React.FC = () => {
         };
     })();
 
-    // Rating Distribution Chart
+    // Rating Distribution Chart - using correct UserAnime structure
     const ratingsData = {
         labels: ['Excellent (9-10)', 'Great (7-8)', 'Good (5-6)', 'Poor (1-4)', 'Unrated'],
         datasets: [
@@ -214,24 +240,28 @@ const StatsChart: React.FC = () => {
         }
     };
 
+    // Calculate additional stats for display
+    const averageRating = userAnimeList
+        .filter(anime => anime.personalRating)
+        .reduce((sum, anime) => sum + (anime.personalRating || 0), 0) / 
+        userAnimeList.filter(anime => anime.personalRating).length || 0;
+
+    const dropRate = stats.totalAnime > 0 ? Math.round((stats.droppedAnime / stats.totalAnime) * 100) : 0;
+
     return (
         <div className="space-y-6">
-            {/* Key Metrics Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Key Metrics Cards - Top Row (3 cards) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="card text-center">
-                    <div className="text-2xl font-bold text-blue-600">{stats?.totalAnime || 0}</div>
+                    <div className="text-2xl font-bold text-blue-600">{stats.totalAnime || 0}</div>
                     <div className="text-gray-600 text-sm">Total Anime</div>
                 </div>
                 <div className="card text-center">
-                    <div className="text-2xl font-bold text-purple-600">{stats?.totalEpisodesWatched || 0}</div>
+                    <div className="text-2xl font-bold text-purple-600">{stats.totalEpisodesWatched || 0}</div>
                     <div className="text-gray-600 text-sm">Episodes Watched</div>
                 </div>
                 <div className="card text-center">
-                    <div className="text-2xl font-bold text-red-600">{stats?.totalDropped || 0}</div>
-                    <div className="text-gray-600 text-sm">Animes Dropped</div>
-                </div>
-                <div className="card text-center">
-                    <div className="text-2xl font-bold text-yellow-600">{stats?.completionRate || 0}%</div>
+                    <div className="text-2xl font-bold text-yellow-600">{stats.completionRate || 0}%</div>
                     <div className="text-gray-600 text-sm">Completion Rate</div>
                 </div>
             </div>
@@ -286,25 +316,8 @@ const StatsChart: React.FC = () => {
                 </div>
             </div>
 
-            {/* Additional Stats */}
+            {/* Bottom Row: Rating Insights + Watch Time Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Top Studios */}
-                {stats.topStudios && stats.topStudios.length > 0 && (
-                    <div className="card">
-                        <h3 className="text-lg font-semibold mb-4">🏢 Favorite Studios</h3>
-                        <div className="space-y-2">
-                            {stats.topStudios.slice(0, 5).map((studio: any, index: number) => (
-                                <div key={studio.studio} className="flex justify-between items-center">
-                                    <span className="text-gray-700">{studio.studio}</span>
-                                    <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
-                                        {studio.count} anime
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
                 {/* Rating Insights */}
                 <div className="card">
                     <h3 className="text-lg font-semibold mb-4">⭐ Rating Insights</h3>
@@ -312,34 +325,37 @@ const StatsChart: React.FC = () => {
                         <div className="flex justify-between">
                             <span className="text-gray-600">Your Average Rating:</span>
                             <span className="font-semibold text-purple-600">
-                                {stats.personalAverageRating > 0 ? `${stats.personalAverageRating}/10` : 'No ratings yet'}
+                                {averageRating > 0 ? `${averageRating.toFixed(1)}/10` : 'No ratings yet'}
                             </span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-gray-600">Drop Rate:</span>
-                            <span className="font-semibold text-red-600">{stats.dropRate}%</span>
+                            <span className="font-semibold text-red-600">{dropRate}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-600">Dropped Anime:</span>
+                            <span className="font-semibold text-red-600">{stats.droppedAnime || 0}</span>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Watch Time Breakdown */}
-            <div className="card">
-                <h3 className="text-lg font-semibold mb-4">⏱️ Watch Time Summary</h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{stats?.totalWatchTimeMinutes || 0}m</div>
-                    <div className="text-gray-600 text-sm">Total Minutes</div>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{stats?.totalWatchTimeHours || 0}h</div>
-                    <div className="text-gray-600 text-sm">Total Hours</div>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600">{stats?.totalWatchTimeDays || 0}d</div>
-                    <div className="text-gray-600 text-sm">Total Days</div>
-                </div>
+                {/* Watch Time Stats */}
+                <div className="card">
+                    <h3 className="text-lg font-semibold mb-4">⏰ Watch Time Stats</h3>
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="text-center">
+                            <div className="text-xl font-bold text-orange-600">{stats.totalDaysWatched || 0}</div>
+                            <div className="text-gray-600 text-xs">Days Watched</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-xl font-bold text-green-600">{stats.totalHoursWatched || 0}</div>
+                            <div className="text-gray-600 text-xs">Hours Watched</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-xl font-bold text-indigo-600">{(stats.totalHoursWatched || 0) * 60}</div>
+                            <div className="text-gray-600 text-xs">Minutes Watched</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

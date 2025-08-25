@@ -282,90 +282,191 @@ This project demonstrates production-ready data engineering and cloud architectu
 
 
 
-## 🆕 Recent Updates - Phase 2: Containerization Complete
 
-### **Backend Containerization & RDS Integration** ✅
 
-**What Was Accomplished:**
-- ✅ **Containerized Backend Service**: Full Docker integration with production-ready configuration
-- ✅ **RDS-Ready Database Layer**: Centralized Prisma configuration with SSL support for AWS RDS
-- ✅ **Health Monitoring System**: Comprehensive health checks for container orchestration
-- ✅ **Multi-Service Architecture**: Docker Compose setup for development environment parity
 
-### **Key Technical Improvements**
 
-#### **1. Production-Ready Database Configuration**
-```typescript
-// Centralized database management with RDS detection
-export const prisma = new PrismaClient({
-  // Auto-detects RDS vs local PostgreSQL
-  // Handles SSL requirements automatically
-  // Optimized connection pooling
-});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# CatLog - Anime Tracking Platform
+
+A full-stack anime tracking application with ETL pipeline for real-time anime rankings and recommendations.
+
+## Architecture Overview
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  Frontend   │────│   Backend   │────│ PostgreSQL  │
+│  (Next.js)  │    │ (Express)   │    │ Database    │
+└─────────────┘    └─────────────┘    └─────────────┘
+                           │
+                   ┌─────────────┐    ┌─────────────┐
+                   │ ETL Pipeline│────│ Jikan API   │
+                   │ (Python)    │    │ (External)  │
+                   └─────────────┘    └─────────────┘
 ```
 
-#### **2. Container Infrastructure**
-```yaml
-# docker-compose.yml - Multi-service orchestration
-services:
-  backend:    # Node.js + Express + Prisma ✅
-  postgres:   # Development database ✅
-  frontend:   # Next.js (ready) 🔄
-  etl:        # Python pipeline (ready) 🔄
-  redis:      # Caching layer (ready) 🔄
-```
+## 🚨 Known Technical Debt
 
-#### **3. Health Monitoring**
-- **Basic Health**: `GET /health` - Simple service status
-- **Detailed Health**: `GET /api/health` - Database connectivity, RDS detection, environment info
-- **Readiness Probe**: `GET /api/health/ready` - Kubernetes-style deployment readiness
+### Type System Inconsistency (Status: Functional but Inconsistent)
 
-#### **4. Environment Management**
+**TL;DR**: The app works perfectly, but we have two different type systems that don't perfectly align. This doesn't break functionality but creates maintenance overhead.
+
+#### **The Situation**
+
+Our application currently uses **two separate type definitions** for the same data:
+
+1. **Frontend Types** (`shared/types/index.ts`) - Manual TypeScript interfaces
+2. **Backend Types** (Prisma-generated from `backend/prisma/schema.prisma`)
+
+#### **Why It Still Works**
+- ✅ **HTTP JSON serialization** automatically converts Prisma `DateTime` → `string`
+- ✅ **JavaScript runtime** ignores extra/missing fields gracefully
+- ✅ **Core field names** actually match between systems
+- ✅ **All user-facing functionality** works correctly
+
+#### **Key Mismatches**
+
+| Component | Frontend Expects | Backend Provides | Impact |
+|-----------|------------------|------------------|--------|
+| `Anime.synopsis` | `string` (required) | `description?: string` | ⚠️ Field name difference |
+| `Anime.imageUrl` | `string` (required) | `imageUrl?: string` | ⚠️ Optional vs required |
+| `UserAnime.startDate` | `string?` | `DateTime?` → `string` | ✅ Auto-converted via JSON |
+| `UserAnime.completedDate` | `string?` | `DateTime?` → `string` | ✅ Auto-converted via JSON |
+| `User.watchlist` | `Anime[]` | N/A (computed) | ⚠️ Frontend-only field |
+
+#### **Future Refactoring Plan** (Priority: Low)
+1. **Phase 1**: Create type adapter functions between systems
+2. **Phase 2**: Gradually migrate frontend to Prisma-compatible types  
+3. **Phase 3**: Single source of truth for all types
+
+> **Current Status**: ✅ Application is fully functional. This is a **code quality issue**, not a blocking bug.
+
+---
+
+## Quick Start
+
+### Prerequisites
+- Docker & Docker Compose
+- Node.js 18+ (for local development)
+- Python 3.11+ (for ETL development)
+
+### Development Setup
+
 ```bash
-# Seamless local ↔ RDS switching
-DATABASE_URL="postgresql://user:pass@localhost:5432/catlog_dev"          # Local
-DATABASE_URL="postgresql://user:pass@rds-endpoint:5432/catlog?ssl=true"  # Production
+# Clone the repository
+git clone <repository-url>
+cd catlog
+
+# Copy environment variables
+cp .env.example .env
+
+# Start all services
+docker-compose up --build
+
+# The application will be available at:
+# Frontend: http://localhost:3000
+# Backend API: http://localhost:3001
+# Database: localhost:5432
 ```
 
-### **Development Workflow Updates**
+### Environment Configuration
 
-#### **Local Development**
-```bash
-# Start containerized stack
-docker-compose up -d
+```
+env
+# .env - Development Configuration
+DATABASE_URL="postgresql://postgres:password@postgres:5432/catlog_dev"
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=catlog_dev
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=password
 
-# Check service health
-curl http://localhost:3001/health
-curl http://localhost:3001/api/health
+# Frontend
+FRONTEND_PORT=3000
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
 
-# View logs
-docker-compose logs backend
+# Backend
+BACKEND_PORT=3001
+NODE_ENV=development
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 ```
 
-#### **Production Readiness**
-- ✅ **SSL-enabled RDS connections**
-- ✅ **Environment variable validation**
-- ✅ **Startup health checks**
-- ✅ **Container auto-restart policies**
-- ✅ **Production-optimized Dockerfile**
 
-### **Architecture Benefits Achieved**
+Docker Services
+Service	Purpose	Port	Health Check
+frontend	Next.js React app	3000	/api/health
+backend	Express.js API	3001	/health
+postgres	PostgreSQL database	5432	pg_isready
+etl	Python data pipeline	N/A	Connection tests
+Docker Context Notes
+Due to shared type dependencies, the frontend build context remains at project root. This is intentional until the type system is unified.
 
-#### **Development Experience**
-- **Environment Parity**: Identical development and production containers
-- **Quick Setup**: `docker-compose up` starts entire stack
-- **Isolated Services**: No local dependency conflicts
-- **Easy Debugging**: Container logs and health endpoints
 
-#### **Production Benefits**
-- **Cloud-Native**: Ready for AWS ECS deployment
-- **Scalable**: Container orchestration with auto-scaling
-- **Monitorable**: Health checks for load balancers and orchestrators
-- **Secure**: SSL-enabled database connections with proper secret management
+Deployment
+Production Considerations
+Environment Variables: Update all localhost URLs to production domains
+Database: Migrate to managed PostgreSQL (AWS RDS, etc.)
+Type System: Consider unifying before production deployment
+ETL Scheduling: Set up cron job or scheduled container runs
+Monitoring: Add logging aggregation and health monitoring
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### **Next Phase Options**
-
-Now that containerization is complete, you can choose your next focus:
 
 #### **Option A: AWS Deployment** 🚀
 - Terraform infrastructure setup

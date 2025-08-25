@@ -2,10 +2,9 @@
 
 import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useCat } from '../hooks/useCat';
 import { useUserAnimeList} from '../hooks/useUserAnimeList';
 import { useAuth } from '../hooks/useAuth';
-import { AnimeStatus, UserAnime } from '@shared/types';
+import { AnimeStatus, UserAnime } from '@/types/api';
 import EditRatingModal from './EditRatingModal';
 
 interface Anime {
@@ -28,7 +27,6 @@ interface AnimeCardProps {
 const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const { logActivity } = useCat();
   const { user } = useAuth();
   const { addAnimeToList, removeAnimeFromList, isAnimeInList, getAnimeStatus, updateAnimeInList, loading } = useUserAnimeList();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -77,7 +75,6 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
   };
 
   const handleClick = () => {
-    logActivity('view');
     router.push(`/anime/${anime.malId}`);
   };
 
@@ -103,7 +100,6 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
           // Toggle off the current status = remove from list entirely
           const success = await removeAnimeFromList(anime.malId);
           if (success) {
-            logActivity('log');
             console.log(`Removed "${anime.title}" from your list!`);
           }
         } else if (currentIsInList && currentAnimeStatus !== status) {
@@ -111,7 +107,6 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
           if (currentUserAnimeEntry) {
             const success = await updateAnimeInList(currentUserAnimeEntry.id, { status });
             if (success) {
-              logActivity('log');
               console.log(`Updated "${anime.title}" to ${status.toLowerCase().replace('_', ' ')} status!`);
             }
           }
@@ -119,7 +114,6 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
           // Not in list, add it with the selected status
           const success = await addAnimeToList(anime.malId, status);
           if (success) {
-            logActivity('log');
             console.log(`Added "${anime.title}" to ${status.toLowerCase().replace('_', ' ')} list!`);
           }
         }
@@ -129,7 +123,6 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
           // Remove from list if same status
           const success = await removeAnimeFromList(anime.malId);
           if (success) {
-            logActivity('log');
             console.log(`Removed "${anime.title}" from your list!`);
           }
         } else if (currentIsInList && currentAnimeStatus !== status) {
@@ -137,7 +130,6 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
           if (currentUserAnimeEntry) {
             const success = await updateAnimeInList(currentUserAnimeEntry.id, { status });
             if (success) {
-              logActivity('log');
               console.log(`Updated "${anime.title}" to ${status.toLowerCase().replace('_', ' ')} status!`);
             }
           }
@@ -145,7 +137,6 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => {
           // Add to list with new status
           const success = await addAnimeToList(anime.malId, status);
           if (success) {
-            logActivity('log');
             console.log(`Added "${anime.title}" to ${status.toLowerCase().replace('_', ' ')} list!`);
           }
         }

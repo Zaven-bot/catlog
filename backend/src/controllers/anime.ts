@@ -18,9 +18,14 @@ export const searchAnime = async (req: Request, res: Response) => {
       parseInt(limit as string)
     );
 
-    const transformedAnime = searchResults.data.map(anime => 
-      JikanService.transformAnimeData(anime)
-    );
+    const transformedAnime = searchResults.data.map(anime => {
+      const transformed = JikanService.transformAnimeData(anime);
+      return {
+        ...transformed,
+        synopsis: transformed.description,
+        description: undefined // Remove description field for frontend compatibility
+      };
+    });
 
     res.json({
       data: transformedAnime,
@@ -57,7 +62,14 @@ export const getAnimeDetails = async (req: Request, res: Response) => {
       });
     }
 
-    res.json(anime);
+    // Transform description to synopsis for frontend compatibility
+    const responseAnime = {
+      ...anime,
+      synopsis: anime.description,
+      description: undefined // Remove description field
+    };
+
+    res.json(responseAnime);
   } catch (error) {
     console.error('Get anime details error:', error);
     res.status(500).json({ error: 'Failed to fetch anime details' });
@@ -73,9 +85,14 @@ export const getTopAnime = async (req: Request, res: Response) => {
       parseInt(limit as string)
     );
 
-    const transformedAnime = topAnime.data.map(anime => 
-      JikanService.transformAnimeData(anime)
-    );
+    const transformedAnime = topAnime.data.map(anime => {
+      const transformed = JikanService.transformAnimeData(anime);
+      return {
+        ...transformed,
+        synopsis: transformed.description,
+        description: undefined // Remove description field for frontend compatibility
+      };
+    });
 
     res.json({
       data: transformedAnime,
@@ -96,9 +113,14 @@ export const getSeasonalAnime = async (req: Request, res: Response) => {
       season as string
     );
 
-    const transformedAnime = seasonalAnime.data.map(anime => 
-      JikanService.transformAnimeData(anime)
-    );
+    const transformedAnime = seasonalAnime.data.map(anime => {
+      const transformed = JikanService.transformAnimeData(anime);
+      return {
+        ...transformed,
+        synopsis: transformed.description,
+        description: undefined // Remove description field for frontend compatibility
+      };
+    });
 
     res.json({
       data: transformedAnime,

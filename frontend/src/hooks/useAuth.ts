@@ -2,12 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-
-interface User {
-  id: number;
-  username: string;
-  email: string;
-}
+import { User } from '@/types/api'; // Updated import
 
 interface LoginCredentials {
   login: string;

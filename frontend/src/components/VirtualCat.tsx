@@ -3,13 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import { useUserAnimeList } from '../hooks/useUserAnimeList';
 import { useAuth } from '../hooks/useAuth';
-
-type CatMood = 'bored' | 'happy' | 'excited' | 'super-excited';
+import { VirtualCatMood, AnimeStatus } from '@/types/api';
 
 const VirtualCat: React.FC = () => {
     const { userAnimeList } = useUserAnimeList();
     const { user } = useAuth();
-    const [mood, setMood] = useState<CatMood>('bored');
+    const [mood, setMood] = useState<VirtualCatMood>('bored');
     const [isAnimating, setIsAnimating] = useState(false);
 
     useEffect(() => {
@@ -18,10 +17,9 @@ const VirtualCat: React.FC = () => {
             return;
         }
 
-        // Count currently watching anime
-        const watchingCount = userAnimeList.filter(anime => anime.status === 'WATCHING').length;
+        const watchingCount = userAnimeList.filter(anime => anime.status === AnimeStatus.WATCHING).length;
         
-        let newMood: CatMood;
+        let newMood: VirtualCatMood;
         if (watchingCount === 0) {
             newMood = 'bored';
         } else if (watchingCount === 1) {
@@ -42,42 +40,40 @@ const VirtualCat: React.FC = () => {
     }, [userAnimeList, user, mood]);
 
     const getCatDisplay = () => {
-        const watchingCount = userAnimeList.filter(anime => anime.status === 'WATCHING').length;
+        const watchingCount = userAnimeList.filter(anime => anime.status === AnimeStatus.WATCHING).length;
         
         switch (mood) {
             case 'bored':
                 return {
                     videoSrc: '/videos/zero.mp4',
                     bgGradient: 'from-gray-400 to-gray-600',
-                    message: user ? 
-                        "Meow... You're not watching anything! Find something new! 😿" :
-                        "Meow... Login to start watching anime together! 🐾",
-                    subtext: user ? "Currently watching: 0 anime" : "Not logged in",
+                    message: 'Hello! Ready to discover some anime? 🌟',
+                    subtext: '',
                     borderColor: 'border-gray-300'
                 };
             case 'happy':
                 return {
                     videoSrc: '/videos/one.mp4',
-                    bgGradient: 'from-green-400 to-blue-500',
-                    message: `Purr! You're watching ${watchingCount} anime. Let's enjoy it together! 🎬`,
+                    bgGradient: 'from-blue-400 to-blue-600',
+                    message: 'Nice choice! Enjoying your anime? 😊',
                     subtext: `Currently watching: ${watchingCount} anime`,
-                    borderColor: 'border-green-300'
+                    borderColor: 'border-blue-300'
                 };
             case 'excited':
                 return {
                     videoSrc: '/videos/two.mp4',
-                    bgGradient: 'from-purple-500 to-pink-500',
-                    message: `Amazing! ${watchingCount} anime at once! You're getting serious!`,
+                    bgGradient: 'from-purple-400 to-purple-600',
+                    message: 'Two shows at once? You\'re on fire! 🔥',
                     subtext: `Currently watching: ${watchingCount} anime`,
                     borderColor: 'border-purple-300'
                 };
             case 'super-excited':
                 return {
                     videoSrc: '/videos/threeplus.mp4',
-                    bgGradient: 'from-red-500 to-yellow-500',
-                    message: `WOW! ${watchingCount} anime?! You're an anime master! 🔥`,
+                    bgGradient: 'from-pink-400 to-pink-600',
+                    message: 'WOW! You\'re an anime machine! 🚀',
                     subtext: `Currently watching: ${watchingCount} anime`,
-                    borderColor: 'border-red-300'
+                    borderColor: 'border-pink-300'
                 };
             default:
                 return {
