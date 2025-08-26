@@ -1,0 +1,107 @@
+# Development Docker Compose
+# Usage: docker compose -f docker-compose.dev.yml up
+services:
+  # Frontend Next.js App (Development)
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+      target: development
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001/api
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:3001/api
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - catlog-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend API (Development)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password@postgres:5432/catlog_dev}
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
+      - FRONTEND_URL=http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - catlog-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Local PostgreSQL (Development)
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=catlog_dev
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./backend/prisma/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - catlog-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ETL Pipeline Worker (Development)
+  etl:
+    build:
+      context: ./etl
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password@postgres:5432/catlog_dev}
+      - NODE_ENV=development
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./etl:/app
+      - /app/__pycache__
+      - ./etl/logs:/app/logs
+    networks:
+      - catlog-network
+    restart: unless-stopped
+    command: ["python", "-c", "import time; time.sleep(3600)"]  # Sleep for development
+
+networks:
+  catlog-network:
+    driver: bridge
+
+volumes:
+  postgres_data_dev:

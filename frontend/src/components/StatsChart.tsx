@@ -261,6 +261,10 @@ const StatsChart: React.FC = () => {
                     <div className="text-gray-600 text-sm">Episodes Watched</div>
                 </div>
                 <div className="card text-center">
+                    <div className="text-2xl font-bold text-red-600">{stats.droppedAnime || 0}</div>
+                    <div className="text-gray-600 text-sm">Animes Dropped</div>
+                </div>
+                <div className="card text-center">
                     <div className="text-2xl font-bold text-yellow-600">{stats.completionRate || 0}%</div>
                     <div className="text-gray-600 text-sm">Completion Rate</div>
                 </div>
